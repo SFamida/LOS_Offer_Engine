@@ -164,7 +164,7 @@ export default function CustomConfigPage() {
                 </thead>
                 <tbody>
                   {filtered.map((c, idx) => (
-                    <tr key={c.id}>
+                    <tr key={c.id} className="group">
                       <td style={{ color: "var(--text-secondary)", fontSize: "0.8rem" }}>{idx + 1}</td>
                       <td>
                         <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
@@ -202,7 +202,7 @@ export default function CustomConfigPage() {
                       </td>
                       <td>{c.createdAt}</td>
                       <td style={{ textAlign: "right" }}>
-                        <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.4rem" }}>
+                        <div className="reveal-actions flex justify-end gap-2">
                           <button
                             className="btn-row-edit"
                             style={{ background: "var(--surface-bg)", color: "var(--brand-blue)", border: "1px solid var(--brand-blue)" }}

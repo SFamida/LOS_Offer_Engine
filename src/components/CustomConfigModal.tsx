@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import {
-  CustomConfig, AmountBracket,
+  CustomConfig,
   VANTAGE_TIERS, APR_OPTIONS,
   VantageTierKey, AprValue, VantageConfigMap,
   BUYDOWN_OPTIONS, BuydownValue,

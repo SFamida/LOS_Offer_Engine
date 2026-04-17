@@ -159,7 +159,7 @@ export default function CreditUnionsPage({ embedded = false }: { embedded?: bool
                 </thead>
                 <tbody>
                   {filtered.map((cu) => (
-                    <tr key={cu.id}>
+                    <tr key={cu.id} className="group">
                       <td className="td-name">{cu.name}</td>
                       <td>
                         <div>{fmt(cu.minLoanAmount)}</div>
@@ -179,7 +179,7 @@ export default function CreditUnionsPage({ embedded = false }: { embedded?: bool
                       </td>
                       <td>{cu.createdAt}</td>
                       <td style={{ textAlign: "right" }}>
-                        <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.4rem" }}>
+                        <div className="reveal-actions flex justify-end gap-2">
                           <button className="btn-row-edit" onClick={() => handleEdit(cu)}>Edit</button>
                           <button className="btn-row-delete" onClick={() => setDeleteConfirm(cu.id)}>Delete</button>
                         </div>

@@ -211,7 +211,7 @@ export default function MerchantsPage() {
                 </thead>
                 <tbody>
                   {filtered.map((m) => (
-                    <tr key={m.id}>
+                    <tr key={m.id} className="group">
                       <td className="td-name">{m.name}</td>
                       <td>
                         <div>{fmt(m.minLoanAmount)}</div>
@@ -259,7 +259,7 @@ export default function MerchantsPage() {
                       </td>
                       <td>{m.createdAt}</td>
                       <td style={{ textAlign: "right" }}>
-                        <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.4rem" }}>
+                        <div className="reveal-actions flex justify-end gap-2">
                           <button
                             className="btn-row-edit"
                             style={{ background: "var(--surface-bg)", color: "var(--brand-blue)", border: "1px solid var(--brand-blue)" }}
