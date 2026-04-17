@@ -4,19 +4,22 @@ import { useState } from "react";
 import CreditUnionsPage from "@/components/CreditUnionsPage";
 import MerchantsPage from "@/components/MerchantsPage";
 import CustomConfigPage from "@/components/CustomConfigPage";
+import OffersPage from "@/components/OffersPage";
 
-type Tab = "creditUnions" | "merchants" | "customConfig";
+type Tab = "creditUnions" | "merchants" | "customConfig" | "offers";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "creditUnions", label: "Credit Unions" },
   { key: "merchants",    label: "Merchants" },
   { key: "customConfig", label: "Custom Config" },
+  { key: "offers",       label: "Offers" },
 ];
 
 const BADGE_LABELS: Record<Tab, string> = {
   creditUnions: "Credit Unions",
   merchants:    "Merchants",
   customConfig: "Custom Config",
+  offers:       "Offers",
 };
 
 export default function Home() {
@@ -68,6 +71,7 @@ export default function Home() {
       {activeTab === "creditUnions" && <CreditUnionsPage embedded />}
       {activeTab === "merchants"    && <MerchantsPage />}
       {activeTab === "customConfig" && <CustomConfigPage />}
+      {activeTab === "offers"       && <OffersPage embedded />}
     </div>
   );
 }
