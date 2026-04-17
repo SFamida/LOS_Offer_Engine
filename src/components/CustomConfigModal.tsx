@@ -7,12 +7,14 @@ import {
   VantageTierKey, AprValue, VantageConfigMap,
   BUYDOWN_OPTIONS, BuydownValue,
 } from "@/types/customConfig";
+import { Offer } from "@/types/offer";
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   onSave: (data: Omit<CustomConfig, "id" | "createdAt">) => void;
   existing?: CustomConfig | null;
+  availableOffers: Offer[];
 }
 
 const TERM_OPTIONS = [36, 48, 60, 72, 84, 96, 120, 180];
@@ -33,6 +35,7 @@ const defaultTierForm = (): TierFormMap =>
 const emptyForm = () => ({
   tiers: defaultTierForm(),
   brackets: [emptyBracket()],
+  selectedOfferIds: [] as string[],
   status: "Active" as "Active" | "Inactive",
 });
 
@@ -45,7 +48,7 @@ const TIER_COLORS: Record<VantageTierKey, string> = {
   subPrime:   "#dc2626",
 };
 
-export default function CustomConfigModal({ isOpen, onClose, onSave, existing }: Props) {
+export default function CustomConfigModal({ isOpen, onClose, onSave, existing, availableOffers }: Props) {
   const [form, setForm] = useState(emptyForm());
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -73,6 +76,7 @@ export default function CustomConfigModal({ isOpen, onClose, onSave, existing }:
           maxAmount: String(b.maxAmount),
           terms: b.terms,
         })),
+        selectedOfferIds: existing.selectedOfferIds ?? [],
         status: existing.status,
       });
     } else {
@@ -173,6 +177,7 @@ export default function CustomConfigModal({ isOpen, onClose, onSave, existing }:
         maxAmount: toNum(b.maxAmount),
         terms: b.terms,
       })),
+      selectedOfferIds: form.selectedOfferIds,
       status: form.status,
     });
   };
@@ -187,6 +192,66 @@ export default function CustomConfigModal({ isOpen, onClose, onSave, existing }:
         <form onSubmit={handleSubmit}>
           <div className="modal-body">
             <div className="form-grid">
+
+              {/* ── Offers ─────────────────────────────────────────── */}
+              {availableOffers.length > 0 && (
+                <div className="form-field span-full">
+                  <label className="form-label" style={{ marginBottom: "0.5rem", display: "block" }}>
+                    Offers
+                    <span style={{ fontSize: "0.72rem", fontWeight: 400, color: "var(--text-secondary)", marginLeft: "0.5rem" }}>
+                      Select offers to associate with this config
+                    </span>
+                  </label>
+                  <div style={{
+                    display: "flex", flexWrap: "wrap", gap: "0.5rem",
+                    padding: "0.75rem",
+                    border: "1px solid var(--border-color)",
+                    borderRadius: 8,
+                    background: "var(--surface-bg)",
+                  }}>
+                    {availableOffers.map((offer) => {
+                      const checked = form.selectedOfferIds.includes(offer.id);
+                      return (
+                        <label
+                          key={offer.id}
+                          style={{
+                            display: "flex", alignItems: "center", gap: "0.5rem",
+                            cursor: "pointer", userSelect: "none",
+                            padding: "0.35rem 0.75rem",
+                            borderRadius: 999,
+                            fontSize: "0.8rem",
+                            fontWeight: checked ? 600 : 400,
+                            background: checked ? "#eff6ff" : "var(--surface-card)",
+                            border: `1px solid ${checked ? "var(--brand-600)" : "var(--border-default)"}`,
+                            color: checked ? "var(--brand-600)" : "var(--text-secondary)",
+                            transition: "all 0.15s",
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() =>
+                              setForm((p) => ({
+                                ...p,
+                                selectedOfferIds: checked
+                                  ? p.selectedOfferIds.filter((id) => id !== offer.id)
+                                  : [...p.selectedOfferIds, offer.id],
+                              }))
+                            }
+                            style={{ width: 14, height: 14, accentColor: "var(--brand-600)", cursor: "pointer" }}
+                          />
+                          {offer.name}
+                          {offer.isPromo && (
+                            <span style={{ fontSize: "0.65rem", background: "#fef3c7", color: "#92400e", border: "1px solid #fcd34d", borderRadius: 999, padding: "0.1rem 0.35rem", fontWeight: 700 }}>
+                              Promo
+                            </span>
+                          )}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* ── Vantage Tiers ─────────────────────────────────── */}
               <div className="form-field span-full">

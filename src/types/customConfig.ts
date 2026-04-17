@@ -39,6 +39,7 @@ export interface CustomConfig {
   id: string;
   vantageConfig: VantageConfigMap;
   brackets: AmountBracket[];
+  selectedOfferIds: string[];
   status: "Active" | "Inactive";
   createdAt: string;
 }

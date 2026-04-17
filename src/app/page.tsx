@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import CreditUnionsPage from "@/components/CreditUnionsPage";
 import MerchantsPage from "@/components/MerchantsPage";
 import CustomConfigPage from "@/components/CustomConfigPage";
 import OffersPage from "@/components/OffersPage";
+import { Offer } from "@/types/offer";
 
 type Tab = "creditUnions" | "merchants" | "customConfig" | "offers";
 
@@ -24,6 +25,14 @@ const BADGE_LABELS: Record<Tab, string> = {
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>("creditUnions");
+  const [offers, setOffers] = useState<Offer[]>([]);
+
+  useEffect(() => {
+    fetch("/api/offers")
+      .then((r) => r.json())
+      .then((data) => setOffers(data))
+      .catch(() => {/* DB not yet configured – silently ignore */});
+  }, []);
 
   return (
     <div className="min-h-screen" style={{ background: "var(--surface-bg)" }}>
@@ -70,8 +79,8 @@ export default function Home() {
       {/* Page Content */}
       {activeTab === "creditUnions" && <CreditUnionsPage embedded />}
       {activeTab === "merchants"    && <MerchantsPage />}
-      {activeTab === "customConfig" && <CustomConfigPage />}
-      {activeTab === "offers"       && <OffersPage embedded />}
+      {activeTab === "customConfig" && <CustomConfigPage availableOffers={offers} />}
+      {activeTab === "offers"       && <OffersPage embedded offers={offers} onOffersChange={setOffers} />}
     </div>
   );
 }

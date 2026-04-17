@@ -1,38 +1,34 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Offer } from "@/types/offer";
 import OfferModal from "@/components/OfferModal";
 
-const INITIAL_DATA: Offer[] = [
-  {
-    id: "1",
-    name: "Same As Cash 12 Months",
-    description: "No interest charged if the full balance is paid within 12 months of the purchase date.",
-    isPromo: true,
-    status: "Active",
-    createdAt: "2024-01-10",
-  },
-  {
-    id: "2",
-    name: "Zero Interest 24 Months",
-    description: "0% APR promotional financing for 24 months on approved purchases over $500.",
-    isPromo: true,
-    status: "Active",
-    createdAt: "2024-02-14",
-  },
-  {
-    id: "3",
-    name: "Deferred Payment 6 Months",
-    description: "No payments required for the first 6 months. Interest accrues from purchase date.",
-    isPromo: false,
-    status: "Inactive",
-    createdAt: "2023-12-01",
-  },
-];
+export default function OffersPage({
+  embedded = false,
+  offers: externalOffers,
+  onOffersChange,
+}: {
+  embedded?: boolean;
+  offers?: Offer[];
+  onOffersChange?: (offers: Offer[]) => void;
+}) {
+  const [internalOffers, setInternalOffers] = useState<Offer[]>([]);
+  const [loading, setLoading] = useState(!externalOffers);
+  const offers = externalOffers ?? internalOffers;
+  const setOffers = (next: Offer[]) => {
+    if (onOffersChange) onOffersChange(next);
+    else setInternalOffers(next);
+  };
 
-export default function OffersPage({ embedded = false }: { embedded?: boolean }) {
-  const [offers, setOffers] = useState<Offer[]>(INITIAL_DATA);
+  // Only fetch if NOT externally controlled
+  useEffect(() => {
+    if (externalOffers !== undefined) return;
+    fetch("/api/offers")
+      .then((r) => r.json())
+      .then((data) => setInternalOffers(data))
+      .finally(() => setLoading(false));
+  }, [externalOffers]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | "Active" | "Inactive">("All");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -52,21 +48,31 @@ export default function OffersPage({ embedded = false }: { embedded?: boolean })
   const handleAdd = () => { setEditing(null); setIsModalOpen(true); };
   const handleEdit = (o: Offer) => { setEditing(o); setIsModalOpen(true); };
 
-  const handleSave = (data: Omit<Offer, "id" | "createdAt">) => {
+  const handleSave = async (data: Omit<Offer, "id" | "createdAt">) => {
     if (editing) {
-      setOffers((prev) => prev.map((o) => (o.id === editing.id ? { ...o, ...data } : o)));
+      const res = await fetch(`/api/offers/${editing.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const updated = await res.json();
+      setOffers(offers.map((o) => (o.id === editing.id ? updated : o)));
     } else {
-      setOffers((prev) => [
-        { ...data, id: Date.now().toString(), createdAt: new Date().toISOString().split("T")[0] },
-        ...prev,
-      ]);
+      const res = await fetch("/api/offers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const created = await res.json();
+      setOffers([created, ...offers]);
     }
     setIsModalOpen(false);
     setEditing(null);
   };
 
-  const handleDelete = (id: string) => {
-    setOffers((prev) => prev.filter((o) => o.id !== id));
+  const handleDelete = async (id: string) => {
+    await fetch(`/api/offers/${id}`, { method: "DELETE" });
+    setOffers(offers.filter((o) => o.id !== id));
     setDeleteConfirm(null);
   };
 
