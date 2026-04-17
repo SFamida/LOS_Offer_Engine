@@ -1,53 +1,13 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Merchant } from "@/types/merchant";
 import MerchantModal from "@/components/MerchantModal";
 
 const fmt = (n: number) =>
   n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
-const INITIAL_DATA: Merchant[] = [
-  {
-    id: "1",
-    name: "ABC Electronics",
-    minLoanAmount: 500,
-    maxLoanAmount: 20000,
-    vantageMin: 620,
-    vantageMax: 850,
-    minTerm: 6,
-    maxTerm: 48,
-    offers: ["Same As Cash", "Zero Interest"],
-    status: "Active",
-    createdAt: "2024-02-10",
-  },
-  {
-    id: "2",
-    name: "Greenfield Home Goods",
-    minLoanAmount: 1000,
-    maxLoanAmount: 35000,
-    vantageMin: 640,
-    vantageMax: 820,
-    minTerm: 12,
-    maxTerm: 60,
-    offers: ["Same As Cash"],
-    status: "Active",
-    createdAt: "2024-05-18",
-  },
-  {
-    id: "3",
-    name: "Sunset Auto Parts",
-    minLoanAmount: 250,
-    maxLoanAmount: 10000,
-    vantageMin: 580,
-    vantageMax: 760,
-    minTerm: 3,
-    maxTerm: 36,
-    offers: [],
-    status: "Inactive",
-    createdAt: "2023-09-30",
-  },
-];
+const fmtDate = (d: string) => new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 
 const OFFER_COLORS: Record<string, { bg: string; color: string }> = {
   "Same As Cash": { bg: "#e8f5e9", color: "#2e7d32" },
@@ -108,13 +68,21 @@ const BAND_COLORS: Record<string, string> = {
 };
 
 export default function MerchantsPage() {
-  const [merchants, setMerchants] = useState<Merchant[]>(INITIAL_DATA);
+  const [merchants, setMerchants] = useState<Merchant[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | "Active" | "Inactive">("All");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editing, setEditing] = useState<Merchant | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [ratePlansFor, setRatePlansFor] = useState<Merchant | null>(null);
+
+  useEffect(() => {
+    fetch("/api/merchants")
+      .then((r) => r.json())
+      .then((data) => setMerchants(data))
+      .finally(() => setLoading(false));
+  }, []);
 
   const filtered = useMemo(() => {
     return merchants.filter((m) => {
@@ -127,20 +95,30 @@ export default function MerchantsPage() {
   const handleAdd = () => { setEditing(null); setIsModalOpen(true); };
   const handleEdit = (m: Merchant) => { setEditing(m); setIsModalOpen(true); };
 
-  const handleSave = (data: Omit<Merchant, "id" | "createdAt">) => {
+  const handleSave = async (data: Omit<Merchant, "id" | "createdAt">) => {
     if (editing) {
-      setMerchants((prev) => prev.map((m) => (m.id === editing.id ? { ...m, ...data } : m)));
+      const res = await fetch(`/api/merchants/${editing.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const updated = await res.json();
+      setMerchants((prev) => prev.map((m) => (m.id === editing.id ? updated : m)));
     } else {
-      setMerchants((prev) => [
-        { ...data, id: Date.now().toString(), createdAt: new Date().toISOString().split("T")[0] },
-        ...prev,
-      ]);
+      const res = await fetch("/api/merchants", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const created = await res.json();
+      setMerchants((prev) => [created, ...prev]);
     }
     setIsModalOpen(false);
     setEditing(null);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
+    await fetch(`/api/merchants/${id}`, { method: "DELETE" });
     setMerchants((prev) => prev.filter((m) => m.id !== id));
     setDeleteConfirm(null);
   };
@@ -162,6 +140,9 @@ export default function MerchantsPage() {
           </button>
         </div>
 
+        {loading ? (
+          <div className="empty-state"><p>Loading…</p></div>
+        ) : (<>
         <div className="filter-bar">
           <input
             type="text"
@@ -257,7 +238,7 @@ export default function MerchantsPage() {
                           {m.status}
                         </span>
                       </td>
-                      <td>{m.createdAt}</td>
+                      <td>{fmtDate(m.createdAt)}</td>
                       <td style={{ textAlign: "right" }}>
                         <div className="reveal-actions flex justify-end gap-2">
                           <button
@@ -291,6 +272,7 @@ export default function MerchantsPage() {
             </div>
           ))}
         </div>
+        </>)}
       </main>
 
       <MerchantModal

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { CustomConfig, VANTAGE_TIERS, VantageTierKey } from "@/types/customConfig";
 import CustomConfigModal from "@/components/CustomConfigModal";
+import { Offer } from "@/types/offer";
 
 const fmt = (n: number) =>
   n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -27,65 +28,22 @@ const TIER_COLORS: Record<VantageTierKey, string> = {
   subPrime:   "#dc2626",
 };
 
-const INITIAL_DATA: CustomConfig[] = [
-  {
-    id: "1",
-    vantageConfig: {
-      reserve:    { minScore: 800, maxScore: 850, apr: "8.99%",  buydowns: [1, 2, 3, 4] },
-      superPrime: { minScore: 760, maxScore: 799, apr: "9.99%",  buydowns: [1, 2, 3, 4] },
-      primePlus:  { minScore: 730, maxScore: 759, apr: "10.99%", buydowns: [1, 2, 3, 4] },
-      prime:      { minScore: 700, maxScore: 729, apr: "11.99%", buydowns: [1, 2, 3, 4] },
-      nearPrime:  { minScore: 680, maxScore: 699, apr: "13.99%", buydowns: [1, 2, 3, 4] },
-      subPrime:   { minScore: 640, maxScore: 679, apr: "15.99%", buydowns: [1, 2, 3, 4] },
-    },
-    brackets: [
-      { minAmount: 2500,  maxAmount: 5000,   terms: [36, 48, 60, 72] },
-      { minAmount: 5000,  maxAmount: 10000,  terms: [36, 48, 60, 84, 120] },
-      { minAmount: 10000, maxAmount: 100000, terms: [60, 84, 96, 120, 180] },
-    ],
-    status: "Active",
-    createdAt: "2024-03-01",
-  },
-  {
-    id: "2",
-    vantageConfig: {
-      reserve:    { minScore: 800, maxScore: 850, apr: "9.99%",  buydowns: [1, 2] },
-      superPrime: { minScore: 760, maxScore: 799, apr: "10.99%", buydowns: [1, 2] },
-      primePlus:  { minScore: 730, maxScore: 759, apr: "12.99%", buydowns: [1, 2] },
-      prime:      { minScore: 700, maxScore: 729, apr: "14.99%", buydowns: [1, 2] },
-      nearPrime:  { minScore: 680, maxScore: 699, apr: "16.99%", buydowns: [1, 2] },
-    },
-    brackets: [
-      { minAmount: 5000,  maxAmount: 50000,  terms: [36, 60, 84] },
-      { minAmount: 50000, maxAmount: 100000, terms: [60, 96, 120, 180] },
-    ],
-    status: "Active",
-    createdAt: "2024-06-15",
-  },
-  {
-    id: "3",
-    vantageConfig: {
-      prime:     { minScore: 700, maxScore: 729, apr: "14.99%", buydowns: [1, 2, 3] },
-      nearPrime: { minScore: 680, maxScore: 699, apr: "16.99%", buydowns: [1, 2, 3] },
-      subPrime:  { minScore: 640, maxScore: 679, apr: "17.99%", buydowns: [1, 2, 3] },
-    },
-    brackets: [
-      { minAmount: 500,  maxAmount: 5000,  terms: [36, 48] },
-      { minAmount: 5000, maxAmount: 25000, terms: [36, 48, 60] },
-    ],
-    status: "Inactive",
-    createdAt: "2023-12-20",
-  },
-];
-
-export default function CustomConfigPage() {
-  const [configs, setConfigs] = useState<CustomConfig[]>(INITIAL_DATA);
+export default function CustomConfigPage({ availableOffers }: { availableOffers: Offer[] }) {
+  const [configs, setConfigs] = useState<CustomConfig[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | "Active" | "Inactive">("All");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editing, setEditing] = useState<CustomConfig | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [viewPlansFor, setViewPlansFor] = useState<CustomConfig | null>(null);
+
+  useEffect(() => {
+    fetch("/api/custom-configs")
+      .then((r) => r.json())
+      .then((data) => setConfigs(data))
+      .finally(() => setLoading(false));
+  }, []);
 
   const filtered = useMemo(() => configs.filter((c) => {
     const matchSearch = search === "" ||
@@ -97,20 +55,30 @@ export default function CustomConfigPage() {
   const handleAdd = () => { setEditing(null); setIsModalOpen(true); };
   const handleEdit = (c: CustomConfig) => { setEditing(c); setIsModalOpen(true); };
 
-  const handleSave = (data: Omit<CustomConfig, "id" | "createdAt">) => {
+  const handleSave = async (data: Omit<CustomConfig, "id" | "createdAt">) => {
     if (editing) {
-      setConfigs((prev) => prev.map((c) => (c.id === editing.id ? { ...c, ...data } : c)));
+      const res = await fetch(`/api/custom-configs/${editing.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const updated = await res.json();
+      setConfigs((prev) => prev.map((c) => (c.id === editing.id ? updated : c)));
     } else {
-      setConfigs((prev) => [
-        { ...data, id: Date.now().toString(), createdAt: new Date().toISOString().split("T")[0] },
-        ...prev,
-      ]);
+      const res = await fetch("/api/custom-configs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const created = await res.json();
+      setConfigs((prev) => [created, ...prev]);
     }
     setIsModalOpen(false);
     setEditing(null);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
+    await fetch(`/api/custom-configs/${id}`, { method: "DELETE" });
     setConfigs((prev) => prev.filter((c) => c.id !== id));
     setDeleteConfirm(null);
   };
@@ -143,6 +111,9 @@ export default function CustomConfigPage() {
           </div>
         </div>
 
+        {loading ? (
+          <div className="empty-state"><p>Loading…</p></div>
+        ) : (
         <div className="card">
           {filtered.length === 0 ? (
             <div className="empty-state">
@@ -221,6 +192,7 @@ export default function CustomConfigPage() {
             </div>
           )}
         </div>
+        )} {/* end loading ternary */}
 
         <div className="stat-grid">
           {[
@@ -241,6 +213,7 @@ export default function CustomConfigPage() {
         onClose={() => { setIsModalOpen(false); setEditing(null); }}
         onSave={handleSave}
         existing={editing}
+        availableOffers={availableOffers}
       />
 
       {/* View Plans Modal */}

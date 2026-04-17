@@ -1,0 +1,68 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+  schemas  = ["los_offers"]
+}
+
+model CreditUnion {
+  id            String   @id @default(cuid())
+  name          String   @db.NVarChar(255)
+  minLoanAmount Float
+  maxLoanAmount Float
+  vantageMin    Int
+  vantageMax    Int
+  minTerm       Int
+  maxTerm       Int
+  status        String   @default("Active") @db.NVarChar(20)
+  createdAt     DateTime @default(now())
+
+  @@map("credit_unions")
+  @@schema("los_offers")
+}
+
+model Merchant {
+  id            String   @id @default(cuid())
+  name          String   @db.NVarChar(255)
+  minLoanAmount Float
+  maxLoanAmount Float
+  vantageMin    Int
+  vantageMax    Int
+  minTerm       Int
+  maxTerm       Int
+  offers        String   @db.NVarChar(Max)
+  excelFileName String?  @db.NVarChar(255)
+  status        String   @default("Active") @db.NVarChar(20)
+  createdAt     DateTime @default(now())
+
+  @@map("merchants")
+  @@schema("los_offers")
+}
+
+model Offer {
+  id          String   @id @default(cuid())
+  name        String   @db.NVarChar(255)
+  description String   @db.NVarChar(Max)
+  isPromo     Boolean  @default(false)
+  status      String   @default("Active") @db.NVarChar(20)
+  createdAt   DateTime @default(now())
+
+  @@map("offers")
+  @@schema("los_offers")
+}
+
+model CustomConfig {
+  id               String   @id @default(cuid())
+  vantageConfig    String   @db.NVarChar(Max)
+  brackets         String   @db.NVarChar(Max)
+  selectedOfferIds String   @db.NVarChar(Max)
+  status           String   @default("Active") @db.NVarChar(20)
+  createdAt        DateTime @default(now())
+
+  @@map("custom_configs")
+  @@schema("los_offers")
+}
