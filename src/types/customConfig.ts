@@ -21,6 +21,7 @@ export interface VantageTierEntry {
   maxScore: number;
   apr: AprValue;
   buydowns: BuydownValue[];
+  mdr?: number;
 }
 
 /** Keyed by VantageTierKey. Only tiers with a configured APR are included. */
@@ -37,9 +38,11 @@ export type BuydownValue = typeof BUYDOWN_OPTIONS[number];
 
 export interface CustomConfig {
   id: string;
+  name?: string;
   vantageConfig: VantageConfigMap;
   brackets: AmountBracket[];
   selectedOfferIds: string[];
+  promoOfferMonths?: Record<string, number[]>;
   status: "Active" | "Inactive";
   createdAt: string;
 }

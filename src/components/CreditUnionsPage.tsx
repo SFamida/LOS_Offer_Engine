@@ -66,27 +66,20 @@ export default function CreditUnionsPage({ embedded = false }: { embedded?: bool
 
   return (
     <div className="min-h-screen" style={{ background: "var(--surface-bg)" }}>
-      {!embedded && (
-        <header className="app-header">
-          <div className="app-header-inner">
-            <div>
-              <div className="app-logo-title">LOS Offers Config</div>
-              <div className="app-logo-sub">Loan Origination System - Configuration Portal</div>
-            </div>
-            <span className="app-badge">Credit Unions</span>
-          </div>
-        </header>
-      )}
 
       <main className="page-content">
         <div className="section-header">
-          <div>
-            <h2 className="section-title">Credit Union Management</h2>
-            <p className="section-sub">
-              {creditUnions.length} total &bull;{" "}
-              {creditUnions.filter((c) => c.status === "Active").length} active
-            </p>
-          </div>
+          {!embedded ? (
+            <div>
+              <h2 className="section-title">Credit Union Management</h2>
+                <p className="section-sub">
+                {creditUnions.length} total &bull;{" "}
+                {creditUnions.filter((c) => c.status === "Active").length} active
+              </p>
+            </div>
+          ) : (
+            <div />
+          )}
           <button className="btn-primary" onClick={handleAdd}>
             <span style={{ fontSize: "1.1rem", lineHeight: "1" }}>+</span>
             Add Credit Union
@@ -144,7 +137,7 @@ export default function CreditUnionsPage({ embedded = false }: { embedded?: bool
                   </thead>
                   <tbody>
                     {filtered.map((cu) => (
-                      <tr key={cu.id}>
+                      <tr key={cu.id} className="group">
                         <td className="td-name">{cu.name}</td>
                         <td>
                           <div>{fmt(cu.minLoanAmount)}</div>
@@ -164,7 +157,7 @@ export default function CreditUnionsPage({ embedded = false }: { embedded?: bool
                         </td>
                         <td>{fmtDate(cu.createdAt)}</td>
                         <td style={{ textAlign: "right" }}>
-                          <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.4rem" }}>
+                          <div className="reveal-actions flex justify-end gap-2">
                             <button className="btn-row-edit" onClick={() => handleEdit(cu)}>Edit</button>
                             <button className="btn-row-delete" onClick={() => setDeleteConfirm(cu.id)}>Delete</button>
                           </div>

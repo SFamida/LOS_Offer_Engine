@@ -57,9 +57,11 @@ model Offer {
 
 model CustomConfig {
   id               String   @id @default(cuid())
+  name             String?  @db.NVarChar(255)
   vantageConfig    String   @db.NVarChar(Max)
   brackets         String   @db.NVarChar(Max)
   selectedOfferIds String   @db.NVarChar(Max)
+  promoOfferMonths String?  @db.NVarChar(Max)
   status           String   @default("Active") @db.NVarChar(20)
   createdAt        DateTime @default(now())
 

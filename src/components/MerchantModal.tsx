@@ -191,60 +191,6 @@ export default function MerchantModal({ isOpen, onClose, onSave, existing }: Pro
                 </div>
               </div>
 
-              {/* Excel File Upload */}
-              <div className="form-field span-full">
-                <label className="form-label">Excel File Upload</label>
-                <div style={{
-                  border: "2px dashed var(--border-color)",
-                  borderRadius: 8,
-                  padding: "1rem 1.25rem",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "1rem",
-                  background: "var(--surface-bg)",
-                }}>
-                  <svg style={{ width: 28, height: 28, flexShrink: 0, color: "var(--text-secondary)" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                      d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    {form.excelFileName ? (
-                      <span style={{ fontSize: "0.85rem", color: "var(--brand-blue)", fontWeight: 500 }}>{form.excelFileName}</span>
-                    ) : (
-                      <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>No file selected (.xls, .xlsx, .csv)</span>
-                    )}
-                  </div>
-                  <label style={{
-                    cursor: "pointer",
-                    padding: "0.35rem 0.9rem",
-                    borderRadius: 6,
-                    fontSize: "0.8rem",
-                    fontWeight: 600,
-                    background: "var(--brand-blue)",
-                    color: "#fff",
-                    whiteSpace: "nowrap",
-                  }}>
-                    Browse
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".xls,.xlsx,.csv"
-                      style={{ display: "none" }}
-                      onChange={handleFileChange}
-                    />
-                  </label>
-                  {form.excelFileName && (
-                    <button
-                      type="button"
-                      onClick={() => { setForm((prev) => ({ ...prev, excelFileName: "" })); if (fileInputRef.current) fileInputRef.current.value = ""; }}
-                      style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-secondary)", fontSize: "1.1rem", lineHeight: 1 }}
-                      aria-label="Remove file"
-                    >&times;</button>
-                  )}
-                </div>
-                {errors.excelFile && <span className="form-error">{errors.excelFile}</span>}
-              </div>
-
               {/* Status */}
               <div className="form-field span-full">
                 <label className="form-label">Status</label>

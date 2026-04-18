@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CustomConfig,
   VANTAGE_TIERS, APR_OPTIONS,
@@ -19,7 +19,7 @@ interface Props {
 
 const TERM_OPTIONS = [36, 48, 60, 72, 84, 96, 120, 180];
 
-type TierFormEntry = { enabled: boolean; minScore: string; maxScore: string; apr: AprValue | ""; buydowns: BuydownValue[] };
+type TierFormEntry = { enabled: boolean; minScore: string; maxScore: string; apr: AprValue | ""; buydowns: BuydownValue[]; mdr: string };
 type TierFormMap = Record<VantageTierKey, TierFormEntry>;
 
 const emptyBracket = () => ({ minAmount: "", maxAmount: "", terms: [] as number[] });
@@ -28,14 +28,16 @@ const defaultTierForm = (): TierFormMap =>
   Object.fromEntries(
     VANTAGE_TIERS.map((t) => [
       t.key,
-      { enabled: true, minScore: String(t.defaultMin), maxScore: String(t.defaultMax), apr: "" as AprValue | "", buydowns: [1, 2, 3, 4] as BuydownValue[] },
+      { enabled: true, minScore: String(t.defaultMin), maxScore: String(t.defaultMax), apr: "" as AprValue | "", buydowns: [1, 2, 3, 4] as BuydownValue[], mdr: "" },
     ])
   ) as TierFormMap;
 
 const emptyForm = () => ({
+  name: "",
   tiers: defaultTierForm(),
   brackets: [emptyBracket()],
   selectedOfferIds: [] as string[],
+  promoOfferMonths: {} as Record<string, string>,
   status: "Active" as "Active" | "Inactive",
 });
 
@@ -52,6 +54,27 @@ export default function CustomConfigModal({ isOpen, onClose, onSave, existing, a
   const [form, setForm] = useState(emptyForm());
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const standardOfferIds = useMemo(
+    () => availableOffers.filter((offer) => /\bstandard\b/i.test(offer.name)).map((offer) => offer.id),
+    [availableOffers]
+  );
+
+  const isStandardSelected = useMemo(
+    () => form.selectedOfferIds.some((id) => standardOfferIds.includes(id)),
+    [form.selectedOfferIds, standardOfferIds]
+  );
+
+  const selectedBuydownNums = useMemo(
+    () =>
+      availableOffers
+        .filter((o) => !o.isPromo && !/\bstandard\b/i.test(o.name) && form.selectedOfferIds.includes(o.id))
+        .map((o) => { const m = o.name.match(/(\d+)/); return m ? parseInt(m[1]) : null; })
+        .filter((n): n is number => n !== null)
+        .sort((a, b) => a - b),
+    [availableOffers, form.selectedOfferIds]
+  );
+  const showBdCol = selectedBuydownNums.length > 0;
+
   useEffect(() => {
     if (existing) {
       const tiers = defaultTierForm();
@@ -64,12 +87,14 @@ export default function CustomConfigModal({ isOpen, onClose, onSave, existing, a
             maxScore: String(entry.maxScore),
             apr:      entry.apr,
             buydowns: entry.buydowns ?? ([1, 2, 3, 4] as BuydownValue[]),
+            mdr:      entry.mdr !== undefined ? String(entry.mdr) : "",
           };
         } else {
           tiers[t.key].enabled = false;
         }
       });
       setForm({
+        name: existing.name ?? "",
         tiers,
         brackets: existing.brackets.map((b) => ({
           minAmount: String(b.minAmount),
@@ -77,13 +102,22 @@ export default function CustomConfigModal({ isOpen, onClose, onSave, existing, a
           terms: b.terms,
         })),
         selectedOfferIds: existing.selectedOfferIds ?? [],
+        promoOfferMonths: Object.fromEntries(
+          Object.entries(existing.promoOfferMonths ?? {}).map(([k, v]) => [
+            k,
+            Array.isArray(v) ? (v as number[]).join(", ") : String(v),
+          ])
+        ),
         status: existing.status,
       });
     } else {
-      setForm(emptyForm());
+      setForm({
+        ...emptyForm(),
+        selectedOfferIds: standardOfferIds,
+      });
     }
     setErrors({});
-  }, [existing, isOpen]);
+  }, [existing, isOpen, standardOfferIds]);
 
   if (!isOpen) return null;
 
@@ -142,7 +176,7 @@ export default function CustomConfigModal({ isOpen, onClose, onSave, existing, a
       if (!maxOk) e[`tier_${t.key}_max`] = "300 – 850";
       if (minOk && maxOk && toNum(entry.minScore) >= toNum(entry.maxScore))
         e[`tier_${t.key}_max`] = "Max > min";
-      if (!entry.apr) e[`tier_${t.key}_apr`] = "Select APR";
+      if (isStandardSelected && !entry.apr) e[`tier_${t.key}_apr`] = "Select APR";
     });
     form.brackets.forEach((b, i) => {
       if (!okNum(b.minAmount)) e[`bracket_${i}_min`] = "Enter a valid amount";
@@ -167,10 +201,17 @@ export default function CustomConfigModal({ isOpen, onClose, onSave, existing, a
           maxScore: toNum(entry.maxScore),
           apr: entry.apr as AprValue,
           buydowns: entry.buydowns,
+          ...(entry.mdr.trim() ? { mdr: parseFloat(entry.mdr) } : {}),
         };
       }
     });
+    const promoOfferMonths: Record<string, number[]> = {};
+    Object.entries(form.promoOfferMonths).forEach(([id, val]) => {
+      const parsed = val.split(",").map((s) => Number(s.trim())).filter((n) => !isNaN(n) && n > 0);
+      if (parsed.length > 0) promoOfferMonths[id] = parsed;
+    });
     onSave({
+      name: form.name.trim() || undefined,
       vantageConfig,
       brackets: form.brackets.map((b) => ({
         minAmount: toNum(b.minAmount),
@@ -178,6 +219,7 @@ export default function CustomConfigModal({ isOpen, onClose, onSave, existing, a
         terms: b.terms,
       })),
       selectedOfferIds: form.selectedOfferIds,
+      promoOfferMonths,
       status: form.status,
     });
   };
@@ -192,6 +234,18 @@ export default function CustomConfigModal({ isOpen, onClose, onSave, existing, a
         <form onSubmit={handleSubmit}>
           <div className="modal-body">
             <div className="form-grid">
+
+              {/* ── Custom Config Name ─────────────────────────────── */}
+              <div className="form-field span-full">
+                <label className="form-label">Custom Config Name</label>
+                <input
+                  type="text"
+                  value={form.name}
+                  placeholder="e.g. Standard Auto Config"
+                  onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                  className="form-input"
+                />
+              </div>
 
               {/* ── Offers ─────────────────────────────────────────── */}
               {availableOffers.length > 0 && (
@@ -211,12 +265,13 @@ export default function CustomConfigModal({ isOpen, onClose, onSave, existing, a
                   }}>
                     {availableOffers.map((offer) => {
                       const checked = form.selectedOfferIds.includes(offer.id);
+                      const isStd = /\bstandard\b/i.test(offer.name);
                       return (
                         <label
                           key={offer.id}
                           style={{
                             display: "flex", alignItems: "center", gap: "0.5rem",
-                            cursor: "pointer", userSelect: "none",
+                            cursor: isStd ? "not-allowed" : "pointer", userSelect: "none",
                             padding: "0.35rem 0.75rem",
                             borderRadius: 999,
                             fontSize: "0.8rem",
@@ -225,11 +280,13 @@ export default function CustomConfigModal({ isOpen, onClose, onSave, existing, a
                             border: `1px solid ${checked ? "var(--brand-600)" : "var(--border-default)"}`,
                             color: checked ? "var(--brand-600)" : "var(--text-secondary)",
                             transition: "all 0.15s",
+                            opacity: isStd ? 0.75 : 1,
                           }}
                         >
                           <input
                             type="checkbox"
                             checked={checked}
+                            disabled={isStd}
                             onChange={() =>
                               setForm((p) => ({
                                 ...p,
@@ -238,7 +295,7 @@ export default function CustomConfigModal({ isOpen, onClose, onSave, existing, a
                                   : [...p.selectedOfferIds, offer.id],
                               }))
                             }
-                            style={{ width: 14, height: 14, accentColor: "var(--brand-600)", cursor: "pointer" }}
+                            style={{ width: 14, height: 14, accentColor: "var(--brand-600)", cursor: isStd ? "not-allowed" : "pointer" }}
                           />
                           {offer.name}
                           {offer.isPromo && (
@@ -249,6 +306,37 @@ export default function CustomConfigModal({ isOpen, onClose, onSave, existing, a
                         </label>
                       );
                     })}
+                    {/* Promo offer month inputs — shown at bottom of the offers box */}
+                    {availableOffers.some((o) => o.isPromo && form.selectedOfferIds.includes(o.id)) && (
+                      <div style={{ width: "100%", borderTop: "1px solid var(--border-color)", marginTop: "0.5rem", paddingTop: "0.65rem", display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
+                        {availableOffers
+                          .filter((o) => o.isPromo && form.selectedOfferIds.includes(o.id))
+                          .map((offer) => (
+                            <div key={offer.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                              <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-primary)", whiteSpace: "nowrap" }}>
+                                {offer.name}
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="e.g. 6, 12, 24"
+                                value={form.promoOfferMonths[offer.id] ?? ""}
+                                onChange={(e) =>
+                                  setForm((p) => ({
+                                    ...p,
+                                    promoOfferMonths: { ...p.promoOfferMonths, [offer.id]: e.target.value },
+                                  }))
+                                }
+                                style={{
+                                  width: 160, padding: "0.3rem 0.5rem",
+                                  border: "1px solid var(--border-color)", borderRadius: 6,
+                                  fontSize: "0.8rem",
+                                  background: "var(--surface-card)", color: "var(--text-primary)",
+                                }}
+                              />
+                            </div>
+                          ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -265,7 +353,8 @@ export default function CustomConfigModal({ isOpen, onClose, onSave, existing, a
 
                 {/* Header row */}
                 <div style={{
-                  display: "grid", gridTemplateColumns: "2rem 1fr 6.5rem 6.5rem 7rem 9.5rem",
+                  display: "grid",
+                  gridTemplateColumns: ["2rem", "1fr", "6.5rem", "6.5rem", ...(isStandardSelected ? ["7rem", "6rem"] : []), ...(showBdCol ? ["9.5rem"] : [])].join(" "),
                   gap: "0.5rem", padding: "0.35rem 0.75rem",
                   fontSize: "0.7rem", fontWeight: 700, color: "var(--text-secondary)",
                   background: "var(--surface-bg)", borderRadius: "8px 8px 0 0",
@@ -276,8 +365,9 @@ export default function CustomConfigModal({ isOpen, onClose, onSave, existing, a
                   <span>Tier</span>
                   <span style={{ textAlign: "center" }}>Min Score</span>
                   <span style={{ textAlign: "center" }}>Max Score</span>
-                  <span style={{ textAlign: "center" }}>APR</span>
-                  <span style={{ textAlign: "center" }}>Buydown</span>
+                  {isStandardSelected && <span style={{ textAlign: "center" }}>Standard</span>}
+                  {isStandardSelected && <span style={{ textAlign: "center" }}>MDR%</span>}
+                  {showBdCol && <span style={{ textAlign: "center" }}>Buydown</span>}
                 </div>
 
                 <div style={{ border: "1px solid var(--border-color)", borderTop: "none", borderRadius: "0 0 8px 8px", overflow: "hidden" }}>
@@ -290,7 +380,8 @@ export default function CustomConfigModal({ isOpen, onClose, onSave, existing, a
                     const hasAprErr = !!errors[`tier_${tier.key}_apr`];
                     return (
                       <div key={tier.key} style={{
-                        display: "grid", gridTemplateColumns: "2rem 1fr 6.5rem 6.5rem 7rem 9.5rem",
+                        display: "grid",
+                        gridTemplateColumns: ["2rem", "1fr", "6.5rem", "6.5rem", ...(isStandardSelected ? ["7rem", "6rem"] : []), ...(showBdCol ? ["9.5rem"] : [])].join(" "),
                         gap: "0.5rem", alignItems: "center",
                         padding: "0.55rem 0.75rem",
                         borderBottom: idx < VANTAGE_TIERS.length - 1 ? "1px solid var(--border-color)" : "none",
@@ -346,24 +437,44 @@ export default function CustomConfigModal({ isOpen, onClose, onSave, existing, a
                         </div>
 
                         {/* APR */}
-                        <div>
-                          <select
-                            value={entry.apr}
-                            disabled={disabled}
-                            onChange={(e) => updateTier(tier.key, "apr", e.target.value)}
-                            className={`form-input${hasAprErr ? " error" : ""}`}
-                            style={{ textAlign: "center", padding: "0.3rem 0.4rem", fontSize: "0.82rem" }}
-                          >
-                            <option value="">— APR —</option>
-                            {APR_OPTIONS.map((a) => <option key={a} value={a}>{a}</option>)}
-                          </select>
-                          {hasAprErr && <div style={{ fontSize: "0.65rem", color: "var(--danger)", textAlign: "center", marginTop: 2 }}>{errors[`tier_${tier.key}_apr`]}</div>}
-                        </div>
+                        {isStandardSelected && (
+                          <div>
+                            <select
+                              value={entry.apr}
+                              disabled={disabled}
+                              onChange={(e) => updateTier(tier.key, "apr", e.target.value)}
+                              className={`form-input${hasAprErr ? " error" : ""}`}
+                              style={{ textAlign: "center", padding: "0.3rem 0.4rem", fontSize: "0.82rem" }}
+                            >
+                              <option value="">— APR —</option>
+                              {APR_OPTIONS.map((a) => <option key={a} value={a}>{a}</option>)}
+                            </select>
+                            {hasAprErr && <div style={{ fontSize: "0.65rem", color: "var(--danger)", textAlign: "center", marginTop: 2 }}>{errors[`tier_${tier.key}_apr`]}</div>}
+                          </div>
+                        )}
+
+                        {/* MDR% */}
+                        {isStandardSelected && (
+                          <div>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.1"
+                              placeholder="3.5"
+                              value={entry.mdr}
+                              disabled={disabled}
+                              onChange={(e) => updateTier(tier.key, "mdr", e.target.value)}
+                              className="form-input"
+                              style={{ textAlign: "center", padding: "0.3rem 0.4rem", fontSize: "0.82rem" }}
+                            />
+                          </div>
+                        )}
 
                         {/* Buydown */}
+                        {showBdCol && (
                         <div style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem", alignItems: "center", justifyContent: "center" }}>
-                          {BUYDOWN_OPTIONS.map((bd) => {
-                            const checked = entry.buydowns.includes(bd);
+                          {selectedBuydownNums.map((bd) => {
+                            const checked = entry.buydowns.includes(bd as BuydownValue);
                             return (
                               <label key={bd} style={{
                                 display: "flex", alignItems: "center", justifyContent: "center",
@@ -376,13 +487,14 @@ export default function CustomConfigModal({ isOpen, onClose, onSave, existing, a
                                 transition: "all 0.15s", userSelect: "none", minWidth: 22,
                               }}>
                                 <input type="checkbox" checked={checked} disabled={disabled}
-                                  onChange={() => toggleTierBuydown(tier.key, bd)}
+                                  onChange={() => toggleTierBuydown(tier.key, bd as BuydownValue)}
                                   style={{ display: "none" }} />
                                 {bd}
                               </label>
                             );
                           })}
                         </div>
+                        )}
                       </div>
                     );
                   })}

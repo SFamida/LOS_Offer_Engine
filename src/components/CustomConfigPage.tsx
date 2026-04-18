@@ -15,9 +15,9 @@ const calcBuydownRate = (apr: string, buydown: number): string => {
 };
 
 const DEALER_DISCOUNT_BASE = 3.5;
-/** Dealer discount = buydown × 3.5% */
-const calcDealerDiscount = (buydown: number): string =>
-  (buydown * DEALER_DISCOUNT_BASE).toFixed(1) + "%";
+/** Dealer discount = buydown × MDR% (falls back to 3.5 if not configured) */
+const calcDealerDiscount = (buydown: number, mdr?: number): string =>
+  (buydown * (mdr ?? DEALER_DISCOUNT_BASE)).toFixed(1) + "%";
 
 const TIER_COLORS: Record<VantageTierKey, string> = {
   reserve:    "#0ea5e9",
@@ -28,7 +28,7 @@ const TIER_COLORS: Record<VantageTierKey, string> = {
   subPrime:   "#dc2626",
 };
 
-export default function CustomConfigPage({ availableOffers }: { availableOffers: Offer[] }) {
+export default function CustomConfigPage({ availableOffers, embedded = false }: { availableOffers: Offer[]; embedded?: boolean }) {
   const [configs, setConfigs] = useState<CustomConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -37,6 +37,7 @@ export default function CustomConfigPage({ availableOffers }: { availableOffers:
   const [editing, setEditing] = useState<CustomConfig | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [viewPlansFor, setViewPlansFor] = useState<CustomConfig | null>(null);
+  const [selectedViewOfferIds, setSelectedViewOfferIds] = useState<string[]>([]);
 
   useEffect(() => {
     fetch("/api/custom-configs")
@@ -62,6 +63,12 @@ export default function CustomConfigPage({ availableOffers }: { availableOffers:
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        console.error("Failed to update config:", err);
+        alert(`Save failed: ${err.error ?? res.status}`);
+        return;
+      }
       const updated = await res.json();
       setConfigs((prev) => prev.map((c) => (c.id === editing.id ? updated : c)));
     } else {
@@ -70,6 +77,12 @@ export default function CustomConfigPage({ availableOffers }: { availableOffers:
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        console.error("Failed to create config:", err);
+        alert(`Save failed: ${err.error ?? res.status}`);
+        return;
+      }
       const created = await res.json();
       setConfigs((prev) => [created, ...prev]);
     }
@@ -87,13 +100,17 @@ export default function CustomConfigPage({ availableOffers }: { availableOffers:
     <div className="min-h-screen" style={{ background: "var(--surface-bg)" }}>
       <main className="page-content">
         <div className="section-header">
-          <div>
-            <h2 className="section-title">Custom Configuration</h2>
-            <p className="section-sub">
-              {configs.length} total &bull;{" "}
-              {configs.filter((c) => c.status === "Active").length} active
-            </p>
-          </div>
+          {!embedded ? (
+            <div>
+              <h2 className="section-title">Custom Configuration</h2>
+              <p className="section-sub">
+                {configs.length} total &bull;{" "}
+                {configs.filter((c) => c.status === "Active").length} active
+              </p>
+            </div>
+          ) : (
+            <div />
+          )}
           <button className="btn-primary" onClick={handleAdd}>
             <span style={{ fontSize: "1.1rem", lineHeight: "1" }}>+</span>
             Add Config
@@ -114,84 +131,92 @@ export default function CustomConfigPage({ availableOffers }: { availableOffers:
         {loading ? (
           <div className="empty-state"><p>Loading…</p></div>
         ) : (
-        <div className="card">
-          {filtered.length === 0 ? (
-            <div className="empty-state">
-              <p style={{ fontWeight: 600 }}>No configurations found</p>
-              <p style={{ fontSize: "0.78rem", marginTop: 4 }}>Try adjusting your search or filters</p>
-            </div>
-          ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Vantage Tier APRs</th>
-                    <th>Loan Amount Brackets</th>
-                    <th>Status</th>
-                    <th>Created</th>
-                    <th style={{ textAlign: "right" }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((c, idx) => (
-                    <tr key={c.id} className="group">
-                      <td style={{ color: "var(--text-secondary)", fontSize: "0.8rem" }}>{idx + 1}</td>
-                      <td>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
-                          {VANTAGE_TIERS.map((tier) => {
-                            const entry = c.vantageConfig[tier.key];
-                            if (!entry) return null;
-                            return (
-                              <div key={tier.key} style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.77rem" }}>
-                                <span style={{ width: 8, height: 8, borderRadius: "50%", background: TIER_COLORS[tier.key], display: "inline-block", flexShrink: 0 }} />
-                                <span style={{ color: "var(--text-secondary)" }}>{tier.label}</span>
-                                <span style={{ color: "var(--text-secondary)" }}>({entry.minScore}–{entry.maxScore})</span>
-                                <span style={{ fontWeight: 700, color: TIER_COLORS[tier.key] }}>{entry.apr}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </td>
-                      <td>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
-                          {c.brackets.map((b, bi) => (
-                            <div key={bi} style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
-                              <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>
-                                {fmt(b.minAmount)} &ndash; {fmt(b.maxAmount)}
-                              </span>
-                              {" "}&rarr; {b.terms.join(", ")} mo
-                            </div>
-                          ))}
-                        </div>
-                      </td>
-                      <td>
-                        <span className={`badge ${c.status === "Active" ? "badge-active" : "badge-inactive"}`}>
-                          <span className="badge-dot" />
-                          {c.status}
-                        </span>
-                      </td>
-                      <td>{c.createdAt}</td>
-                      <td style={{ textAlign: "right" }}>
-                        <div className="reveal-actions flex justify-end gap-2">
-                          <button
-                            className="btn-row-edit"
-                            style={{ background: "var(--surface-bg)", color: "var(--brand-blue)", border: "1px solid var(--brand-blue)" }}
-                            onClick={() => setViewPlansFor(c)}
-                          >
-                            View Plans
-                          </button>
-                          <button className="btn-row-edit" onClick={() => handleEdit(c)}>Edit</button>
-                          <button className="btn-row-delete" onClick={() => setDeleteConfirm(c.id)}>Delete</button>
-                        </div>
-                      </td>
+          <div className="card">
+            {filtered.length === 0 ? (
+              <div className="empty-state">
+                <p style={{ fontWeight: 600 }}>No configurations found</p>
+                <p style={{ fontSize: "0.78rem", marginTop: 4 }}>Try adjusting your search or filters</p>
+              </div>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Vantage Tier APRs</th>
+                      <th>Loan Amount Brackets</th>
+                      <th>Status</th>
+                      <th>Created</th>
+                      <th style={{ textAlign: "right" }}>Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                  </thead>
+                  <tbody>
+                    {filtered.map((c, index) => (
+                      <tr key={c.id} className="group">
+                        <td>{index + 1}</td>
+                        <td>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
+                            {VANTAGE_TIERS.map((tier) => {
+                              const entry = c.vantageConfig[tier.key];
+                              if (!entry) return null;
+                              return (
+                                <div key={tier.key} style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.77rem" }}>
+                                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: TIER_COLORS[tier.key], display: "inline-block", flexShrink: 0 }} />
+                                  <span style={{ color: "var(--text-secondary)" }}>{tier.label}</span>
+                                  <span style={{ color: "var(--text-secondary)" }}>({entry.minScore}–{entry.maxScore})</span>
+                                  <span style={{ fontWeight: 700, color: TIER_COLORS[tier.key] }}>{entry.apr}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
+                            {c.brackets.map((b, bi) => (
+                              <div key={bi} style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+                                <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>
+                                  {fmt(b.minAmount)} &ndash; {fmt(b.maxAmount)}
+                                </span>
+                                {" "}&rarr; {b.terms.join(", ")} mo
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                        <td>
+                          <span className={`badge ${c.status === "Active" ? "badge-active" : "badge-inactive"}`}>
+                            <span className="badge-dot" />
+                            {c.status}
+                          </span>
+                        </td>
+                        <td>{c.createdAt}</td>
+                        <td style={{ textAlign: "right" }}>
+                          <div className="reveal-actions flex justify-end gap-2">
+                            <button
+                              className="btn-row-edit"
+                              style={{ background: "var(--surface-bg)", color: "var(--brand-blue)", border: "1px solid var(--brand-blue)" }}
+                              onClick={() => {
+                                setSelectedViewOfferIds(
+                                  c.selectedOfferIds.filter((id) => {
+                                    const o = availableOffers.find((off) => off.id === id);
+                                    return o && !o.isPromo;
+                                  })
+                                );
+                                setViewPlansFor(c);
+                              }}
+                            >
+                              View Plans
+                            </button>
+                            <button className="btn-row-edit" onClick={() => handleEdit(c)}>Edit</button>
+                            <button className="btn-row-delete" onClick={() => setDeleteConfirm(c.id)}>Delete</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         )} {/* end loading ternary */}
 
         <div className="stat-grid">
@@ -220,6 +245,15 @@ export default function CustomConfigPage({ availableOffers }: { availableOffers:
       {viewPlansFor && (() => {
         const activeTiers = VANTAGE_TIERS.filter((t) => viewPlansFor.vantageConfig[t.key]);
         const totalRows = activeTiers.length * viewPlansFor.brackets.reduce((s, b) => s + b.terms.length, 0);
+        const activeNonPromo = availableOffers.filter(
+          (o) => !o.isPromo && viewPlansFor.selectedOfferIds.includes(o.id) && selectedViewOfferIds.includes(o.id)
+        );
+        const showStdCol = activeNonPromo.some((o) => /\bstandard\b/i.test(o.name));
+        const checkedBuydownNums = activeNonPromo
+          .filter((o) => !/\bstandard\b/i.test(o.name))
+          .map((o) => { const m = o.name.match(/(\d+)/); return m ? parseInt(m[1]) : null; })
+          .filter((n): n is number => n !== null);
+        const showBdCol = checkedBuydownNums.length > 0;
         return (
           <div className="modal-overlay" onClick={() => setViewPlansFor(null)}>
             <div className="modal-box" style={{ maxWidth: 820, width: "96vw" }} onClick={(e) => e.stopPropagation()}>
@@ -242,10 +276,11 @@ export default function CustomConfigPage({ availableOffers }: { availableOffers:
                         <th>#</th>
                         <th>Vantage Tier</th>
                         <th>Score Range</th>
-                        <th>APR</th>
-                        <th>Loan Amount</th>
+                        {showStdCol && <th>Standard</th>}
+                        {showBdCol && <th>Buydown</th>}
+                        {showBdCol && <th>Buydown Rate</th>}
+                        <th>Amount Range</th>
                         <th>Term</th>
-                        <th>Buydown Rate</th>
                         <th>Dealer Discount</th>
                       </tr>
                     </thead>
@@ -254,90 +289,89 @@ export default function CustomConfigPage({ availableOffers }: { availableOffers:
                         let rowNum = 0;
                         return activeTiers.flatMap((tier, ti) =>
                           viewPlansFor.brackets.flatMap((bracket, bri) =>
-                            bracket.terms.map((term) => {
-                              rowNum++;
+                            bracket.terms.flatMap((term) => {
                               const entry = viewPlansFor.vantageConfig[tier.key]!;
                               const accent = TIER_COLORS[tier.key];
                               const rowBg = ti % 2 === 0 ? "transparent" : "var(--surface-bg)";
-                              return (
-                                <tr key={`${ti}-${bri}-${term}`} style={{ background: rowBg }}>
-                                  <td style={{ color: "var(--text-secondary)", fontSize: "0.75rem" }}>{rowNum}</td>
-                                  <td>
-                                    <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: accent, display: "inline-block", flexShrink: 0 }} />
-                                      <span style={{ fontWeight: 700, fontSize: "0.78rem" }}>{tier.label}</span>
-                                    </div>
-                                  </td>
-                                  <td style={{ fontWeight: 600, fontSize: "0.78rem" }}>
-                                    {entry.minScore} &ndash; {entry.maxScore}
-                                  </td>
-                                  <td>
-                                    <span style={{ fontWeight: 700, color: accent, fontSize: "0.85rem" }}>{entry.apr}</span>
-                                  </td>
-                                  <td style={{ fontWeight: 600 }}>
-                                    {fmt(bracket.minAmount)} &ndash; {fmt(bracket.maxAmount)}
-                                  </td>
-                                  <td>
-                                    <span style={{
-                                      fontSize: "0.75rem", fontWeight: 600, padding: "2px 10px",
-                                      borderRadius: 999, background: "#eff6ff", color: "#1d4ed8",
-                                      whiteSpace: "nowrap", display: "inline-block",
-                                    }}>
-                                      {term} mo
-                                    </span>
-                                  </td>
-                                  <td>
-                                    {/* Buydown Rate column */}
-                                    <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-                                      {(entry.buydowns ?? []).length === 0 ? (
-                                        <span style={{ fontSize: "0.72rem", color: "var(--text-secondary)" }}>—</span>
+
+                              // Determine which buydown numbers are active for this tier
+                              const activeBds = showBdCol
+                                ? checkedBuydownNums.filter((bd) => (entry.buydowns ?? []).some((b) => b === bd))
+                                : [];
+
+                              // If buydown column is shown and there are active buydowns,
+                              // produce one row per buydown; otherwise one row (no buydown)
+                              const bdRows = showBdCol && activeBds.length > 0 ? activeBds : [null];
+
+                              return bdRows.map((bd) => {
+                                rowNum++;
+                                return (
+                                  <tr key={`${ti}-${bri}-${term}-${bd ?? "std"}`} style={{ background: rowBg }}>
+                                    <td style={{ color: "var(--text-secondary)", fontSize: "0.75rem" }}>{rowNum}</td>
+                                    <td>
+                                      <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: accent, display: "inline-block", flexShrink: 0 }} />
+                                        <span style={{ fontWeight: 700, fontSize: "0.78rem" }}>{tier.label}</span>
+                                      </div>
+                                    </td>
+                                    <td style={{ fontWeight: 600, fontSize: "0.78rem" }}>
+                                      {entry.minScore} &ndash; {entry.maxScore}
+                                    </td>
+                                    {showStdCol && (
+                                      <td>
+                                        <span style={{ fontWeight: 700, color: accent, fontSize: "0.85rem" }}>{entry.apr}</span>
+                                      </td>
+                                    )}
+                                    {showBdCol && (
+                                      <td>
+                                        {bd !== null
+                                          ? <span style={{ fontWeight: 700, color: accent, fontSize: "0.85rem" }}>{bd}%</span>
+                                          : <span style={{ fontSize: "0.72rem", color: "var(--text-secondary)" }}>—</span>}
+                                      </td>
+                                    )}
+                                    {showBdCol && (
+                                      <td>
+                                        {bd !== null
+                                          ? <span style={{ fontWeight: 700, color: accent, fontSize: "0.85rem" }}>{calcBuydownRate(entry.apr, bd)}</span>
+                                          : <span style={{ fontSize: "0.72rem", color: "var(--text-secondary)" }}>—</span>}
+                                      </td>
+                                    )}
+                                    <td style={{ fontWeight: 600 }}>
+                                      {fmt(bracket.minAmount)} &ndash; {fmt(bracket.maxAmount)}
+                                    </td>
+                                    <td>
+                                      <span style={{
+                                        fontSize: "0.75rem", fontWeight: 600, padding: "2px 10px",
+                                        borderRadius: 999, background: "#eff6ff", color: "#1d4ed8",
+                                        whiteSpace: "nowrap", display: "inline-block",
+                                      }}>
+                                        {term} mo
+                                      </span>
+                                    </td>
+                                    <td>
+                                      {/* Dealer Discount column */}
+                                      {bd !== null ? (
+                                        <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                                          <span style={{
+                                            fontSize: "0.7rem", fontWeight: 700,
+                                            padding: "1px 7px", borderRadius: 999,
+                                            background: "#0f766e", color: "#fff",
+                                            minWidth: 20, textAlign: "center", display: "inline-block",
+                                          }}>
+                                            {bd}
+                                          </span>
+                                          <span style={{ fontSize: "0.72rem", color: "var(--text-secondary)", lineHeight: 1 }}>→</span>
+                                          <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#0f766e" }}>
+                                            {calcDealerDiscount(bd, entry.mdr)}
+                                          </span>
+                                        </div>
                                       ) : (
-                                        (entry.buydowns ?? []).map((bd) => (
-                                          <div key={bd} style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
-                                            <span style={{
-                                              fontSize: "0.7rem", fontWeight: 700,
-                                              padding: "1px 7px", borderRadius: 999,
-                                              background: "#1d4ed8", color: "#fff",
-                                              minWidth: 20, textAlign: "center", display: "inline-block",
-                                            }}>
-                                              {bd}
-                                            </span>
-                                            <span style={{ fontSize: "0.72rem", color: "var(--text-secondary)", lineHeight: 1 }}>→</span>
-                                            <span style={{ fontSize: "0.75rem", fontWeight: 700, color: accent }}>
-                                              {calcBuydownRate(entry.apr, bd)}
-                                            </span>
-                                          </div>
-                                        ))
-                                      )}
-                                    </div>
-                                  </td>
-                                  <td>
-                                    {/* Dealer Discount column */}
-                                    <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-                                      {(entry.buydowns ?? []).length === 0 ? (
                                         <span style={{ fontSize: "0.72rem", color: "var(--text-secondary)" }}>—</span>
-                                      ) : (
-                                        (entry.buydowns ?? []).map((bd) => (
-                                          <div key={bd} style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
-                                            <span style={{
-                                              fontSize: "0.7rem", fontWeight: 700,
-                                              padding: "1px 7px", borderRadius: 999,
-                                              background: "#0f766e", color: "#fff",
-                                              minWidth: 20, textAlign: "center", display: "inline-block",
-                                            }}>
-                                              {bd}
-                                            </span>
-                                            <span style={{ fontSize: "0.72rem", color: "var(--text-secondary)", lineHeight: 1 }}>→</span>
-                                            <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#0f766e" }}>
-                                              {calcDealerDiscount(bd)}
-                                            </span>
-                                          </div>
-                                        ))
                                       )}
-                                    </div>
-                                  </td>
-                                </tr>
-                              );
+                                    </td>
+                                  </tr>
+                                );
+                              });
                             })
                           )
                         );

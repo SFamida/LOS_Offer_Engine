@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
-import { Offer } from "@/types/offer";
+import { useEffect, useMemo, useState } from "react";
 import OfferModal from "@/components/OfferModal";
+import { Offer } from "@/types/offer";
 
 export default function OffersPage({
   embedded = false,
@@ -14,127 +14,134 @@ export default function OffersPage({
   onOffersChange?: (offers: Offer[]) => void;
 }) {
   const [internalOffers, setInternalOffers] = useState<Offer[]>([]);
-  const [loading, setLoading] = useState(!externalOffers);
-  const offers = externalOffers ?? internalOffers;
-  const setOffers = (next: Offer[]) => {
-    if (onOffersChange) onOffersChange(next);
-    else setInternalOffers(next);
-  };
-
-  // Only fetch if NOT externally controlled
-  useEffect(() => {
-    if (externalOffers !== undefined) return;
-    fetch("/api/offers")
-      .then((r) => r.json())
-      .then((data) => setInternalOffers(data))
-      .finally(() => setLoading(false));
-  }, [externalOffers]);
+  const [loading, setLoading] = useState(externalOffers === undefined);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | "Active" | "Inactive">("All");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editing, setEditing] = useState<Offer | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
+  const offers = externalOffers ?? internalOffers;
+  const setOffers = (next: Offer[]) => {
+    if (onOffersChange) {
+      onOffersChange(next);
+      return;
+    }
+
+    setInternalOffers(next);
+  };
+
+  useEffect(() => {
+    if (externalOffers !== undefined) {
+      setLoading(false);
+      return;
+    }
+
+    fetch("/api/offers")
+      .then((response) => response.json())
+      .then((data) => setInternalOffers(data))
+      .finally(() => setLoading(false));
+  }, [externalOffers]);
+
   const filtered = useMemo(() => {
-    return offers.filter((o) => {
+    return offers.filter((offer) => {
       const matchSearch =
-        o.name.toLowerCase().includes(search.toLowerCase()) ||
-        o.description.toLowerCase().includes(search.toLowerCase());
-      const matchStatus = statusFilter === "All" || o.status === statusFilter;
+        offer.name.toLowerCase().includes(search.toLowerCase()) ||
+        offer.description.toLowerCase().includes(search.toLowerCase());
+      const matchStatus = statusFilter === "All" || offer.status === statusFilter;
+
       return matchSearch && matchStatus;
     });
   }, [offers, search, statusFilter]);
 
-  const handleAdd = () => { setEditing(null); setIsModalOpen(true); };
-  const handleEdit = (o: Offer) => { setEditing(o); setIsModalOpen(true); };
+  const handleAdd = () => {
+    setEditing(null);
+    setIsModalOpen(true);
+  };
+
+  const handleEdit = (offer: Offer) => {
+    setEditing(offer);
+    setIsModalOpen(true);
+  };
 
   const handleSave = async (data: Omit<Offer, "id" | "createdAt">) => {
     if (editing) {
-      const res = await fetch(`/api/offers/${editing.id}`, {
+      const response = await fetch(`/api/offers/${editing.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      const updated = await res.json();
-      setOffers(offers.map((o) => (o.id === editing.id ? updated : o)));
+      const updated = await response.json();
+      setOffers(offers.map((offer) => (offer.id === editing.id ? updated : offer)));
     } else {
-      const res = await fetch("/api/offers", {
+      const response = await fetch("/api/offers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      const created = await res.json();
+      const created = await response.json();
       setOffers([created, ...offers]);
     }
+
     setIsModalOpen(false);
     setEditing(null);
   };
 
   const handleDelete = async (id: string) => {
     await fetch(`/api/offers/${id}`, { method: "DELETE" });
-    setOffers(offers.filter((o) => o.id !== id));
+    setOffers(offers.filter((offer) => offer.id !== id));
     setDeleteConfirm(null);
   };
 
   return (
     <div className="min-h-screen" style={{ background: "var(--surface-bg)" }}>
-      {!embedded && (
-        <header className="app-header">
-          <div className="app-header-inner">
-            <div>
-              <div className="app-logo-title">LOS Offers Config</div>
-              <div className="app-logo-sub">Loan Origination System - Configuration Portal</div>
-            </div>
-            <span className="app-badge">Offers</span>
-          </div>
-        </header>
-      )}
-
       <main className="page-content">
-        {/* Section header */}
         <div className="section-header">
-          <div>
-            <h2 className="section-title">Offer Management</h2>
-            <p className="section-sub">
-              {offers.length} total &bull;{" "}
-              {offers.filter((o) => o.status === "Active").length} active
-            </p>
-          </div>
+          {!embedded ? (
+            <div>
+              <h2 className="section-title">Offer Management</h2>
+              <p className="section-sub">
+                {offers.length} total &bull;{" "}
+                {offers.filter((offer) => offer.status === "Active").length} active
+              </p>
+            </div>
+          ) : (
+            <div />
+          )}
           <button className="btn-primary" onClick={handleAdd}>
             <span style={{ fontSize: "1.1rem", lineHeight: "1" }}>+</span>
             Add Offer
           </button>
         </div>
 
-        {/* Filters */}
         <div className="filter-bar">
           <input
             type="text"
             className="filter-search"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(event) => setSearch(event.target.value)}
             placeholder="Search by offer name or description..."
           />
           <div style={{ display: "flex", gap: "0.5rem" }}>
-            {(["All", "Active", "Inactive"] as const).map((s) => (
+            {(["All", "Active", "Inactive"] as const).map((status) => (
               <button
-                key={s}
-                className={`filter-pill${statusFilter === s ? " active" : ""}`}
-                onClick={() => setStatusFilter(s)}
+                key={status}
+                className={`filter-pill${statusFilter === status ? " active" : ""}`}
+                onClick={() => setStatusFilter(status)}
               >
-                {s}
+                {status}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Tile grid */}
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="empty-state"><p>Loading…</p></div>
+        ) : filtered.length === 0 ? (
           <div className="card">
             <div className="empty-state">
               <svg style={{ width: 48, height: 48, marginBottom: 12, opacity: 0.35 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                  d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <p style={{ fontWeight: 600 }}>No offers found</p>
               <p style={{ fontSize: "0.78rem", marginTop: 4 }}>Try adjusting your search or filters</p>
@@ -162,10 +169,13 @@ export default function OffersPage({
                   gap: "0.75rem",
                   transition: "box-shadow 0.15s",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.boxShadow = "var(--shadow-md)")}
-                onMouseLeave={(e) => (e.currentTarget.style.boxShadow = "var(--shadow-sm)")}
+                onMouseEnter={(event) => {
+                  event.currentTarget.style.boxShadow = "var(--shadow-md)";
+                }}
+                onMouseLeave={(event) => {
+                  event.currentTarget.style.boxShadow = "var(--shadow-sm)";
+                }}
               >
-                {/* Tile header */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem" }}>
                   <h3
                     style={{
@@ -179,9 +189,7 @@ export default function OffersPage({
                     {offer.name}
                   </h3>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "0.3rem", flexShrink: 0 }}>
-                    <span
-                      className={`badge ${offer.status === "Active" ? "badge-active" : "badge-inactive"}`}
-                    >
+                    <span className={`badge ${offer.status === "Active" ? "badge-active" : "badge-inactive"}`}>
                       <span className="badge-dot" />
                       {offer.status}
                     </span>
@@ -199,13 +207,12 @@ export default function OffersPage({
                           whiteSpace: "nowrap",
                         }}
                       >
-                        ★ Promo
+                        Promo
                       </span>
                     )}
                   </div>
                 </div>
 
-                {/* Description */}
                 <p
                   style={{
                     fontSize: "0.82rem",
@@ -218,7 +225,6 @@ export default function OffersPage({
                   {offer.description}
                 </p>
 
-                {/* Footer */}
                 <div
                   style={{
                     display: "flex",
@@ -242,16 +248,15 @@ export default function OffersPage({
           </div>
         )}
 
-        {/* Stats */}
         <div className="stat-grid" style={{ marginTop: "1.5rem" }}>
           {[
-            { label: "Total Offers",  value: offers.length },
-            { label: "Active",        value: offers.filter((o) => o.status === "Active").length },
-            { label: "Inactive",      value: offers.filter((o) => o.status === "Inactive").length },
-          ].map((s) => (
-            <div key={s.label} className="stat-card">
-              <p className="stat-label">{s.label}</p>
-              <p className="stat-value">{s.value}</p>
+            { label: "Total Offers", value: offers.length },
+            { label: "Active", value: offers.filter((offer) => offer.status === "Active").length },
+            { label: "Inactive", value: offers.filter((offer) => offer.status === "Inactive").length },
+          ].map((stat) => (
+            <div key={stat.label} className="stat-card">
+              <p className="stat-label">{stat.label}</p>
+              <p className="stat-value">{stat.value}</p>
             </div>
           ))}
         </div>
@@ -259,7 +264,10 @@ export default function OffersPage({
 
       <OfferModal
         isOpen={isModalOpen}
-        onClose={() => { setIsModalOpen(false); setEditing(null); }}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditing(null);
+        }}
         onSave={handleSave}
         existing={editing}
       />

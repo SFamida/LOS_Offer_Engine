@@ -67,7 +67,7 @@ const BAND_COLORS: Record<string, string> = {
   "640 - 679": "#fdf4ff",
 };
 
-export default function MerchantsPage() {
+export default function MerchantsPage({ embedded = false }: { embedded?: boolean }) {
   const [merchants, setMerchants] = useState<Merchant[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -127,13 +127,17 @@ export default function MerchantsPage() {
     <div className="min-h-screen" style={{ background: "var(--surface-bg)" }}>
       <main className="page-content">
         <div className="section-header">
-          <div>
-            <h2 className="section-title">Merchant Management</h2>
-            <p className="section-sub">
-              {merchants.length} total &bull;{" "}
-              {merchants.filter((m) => m.status === "Active").length} active
-            </p>
-          </div>
+          {!embedded ? (
+            <div>
+              <h2 className="section-title">Merchant Management</h2>
+              <p className="section-sub">
+                {merchants.length} total &bull;{" "}
+                {merchants.filter((m) => m.status === "Active").length} active
+              </p>
+            </div>
+          ) : (
+            <div />
+          )}
           <button className="btn-primary" onClick={handleAdd}>
             <span style={{ fontSize: "1.1rem", lineHeight: "1" }}>+</span>
             Add Merchant
