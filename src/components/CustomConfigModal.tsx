@@ -226,9 +226,14 @@ export default function CustomConfigModal({ isOpen, onClose, onSave, existing, a
 
   return (
     <div className="modal-overlay">
-      <div className="modal-box" style={{ maxWidth: 900 }}>
-        <div className="modal-header">
-          <span className="modal-title">{existing ? "Edit Custom Config" : "Add Custom Config"}</span>
+      <div className="modal-box" style={{ maxWidth: 900, width: "96vw" }}>
+        <div className="modal-header" style={{ background: "#f8fafc" }}>
+          <div>
+            <span className="modal-title" style={{ fontSize: "0.95rem" }}>{existing ? "Edit Configuration" : "New Configuration"}</span>
+            <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: 2 }}>
+              {existing ? "Modify the fields below and save" : "Fill in all required sections to create a config"}
+            </div>
+          </div>
           <button className="modal-close" onClick={onClose} aria-label="Close">&times;</button>
         </div>
         <form onSubmit={handleSubmit}>
@@ -237,7 +242,10 @@ export default function CustomConfigModal({ isOpen, onClose, onSave, existing, a
 
               {/* ── Custom Config Name ─────────────────────────────── */}
               <div className="form-field span-full">
-                <label className="form-label">Custom Config Name</label>
+                <label className="form-label" style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
+                  <span style={{ width: 20, height: 20, background: "var(--brand-slate)", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "0.62rem", fontWeight: 800, flexShrink: 0 }}>1</span>
+                  Config Name
+                </label>
                 <input
                   type="text"
                   value={form.name}
@@ -250,10 +258,11 @@ export default function CustomConfigModal({ isOpen, onClose, onSave, existing, a
               {/* ── Offers ─────────────────────────────────────────── */}
               {availableOffers.length > 0 && (
                 <div className="form-field span-full">
-                  <label className="form-label" style={{ marginBottom: "0.5rem", display: "block" }}>
+                  <label className="form-label" style={{ marginBottom: "0.5rem", display: "flex", alignItems: "center", gap: "0.45rem" }}>
+                    <span style={{ width: 20, height: 20, background: "#2563eb", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "0.62rem", fontWeight: 800, flexShrink: 0 }}>2</span>
                     Offers
-                    <span style={{ fontSize: "0.72rem", fontWeight: 400, color: "var(--text-secondary)", marginLeft: "0.5rem" }}>
-                      Select offers to associate with this config
+                    <span style={{ fontSize: "0.68rem", fontWeight: 400, color: "var(--text-muted)", marginLeft: "0.25rem" }}>
+                      Select offers to associate
                     </span>
                   </label>
                   <div style={{
@@ -343,10 +352,11 @@ export default function CustomConfigModal({ isOpen, onClose, onSave, existing, a
 
               {/* ── Vantage Tiers ─────────────────────────────────── */}
               <div className="form-field span-full">
-                <label className="form-label" style={{ marginBottom: "0.5rem", display: "block" }}>
-                  Vantage Tiers &amp; APRs *
-                  <span style={{ fontSize: "0.72rem", fontWeight: 400, color: "var(--text-secondary)", marginLeft: "0.5rem" }}>
-                    Toggle tiers on/off, set score range and APR for each
+                <label className="form-label" style={{ marginBottom: "0.5rem", display: "flex", alignItems: "center", gap: "0.45rem" }}>
+                  <span style={{ width: 20, height: 20, background: "#7c3aed", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "0.62rem", fontWeight: 800, flexShrink: 0 }}>3</span>
+                  Vantage Tiers &amp; APRs
+                  <span style={{ fontSize: "0.68rem", fontWeight: 400, color: "var(--text-muted)", marginLeft: "0.25rem" }}>
+                    Toggle tiers, set score ranges and APR
                   </span>
                 </label>
                 {errors["tiers_global"] && <div className="form-error" style={{ marginBottom: "0.4rem" }}>{errors["tiers_global"]}</div>}
@@ -355,9 +365,10 @@ export default function CustomConfigModal({ isOpen, onClose, onSave, existing, a
                 <div style={{
                   display: "grid",
                   gridTemplateColumns: ["2rem", "1fr", "6.5rem", "6.5rem", ...(isStandardSelected ? ["7rem", "6rem"] : []), ...(showBdCol ? ["9.5rem"] : [])].join(" "),
-                  gap: "0.5rem", padding: "0.35rem 0.75rem",
-                  fontSize: "0.7rem", fontWeight: 700, color: "var(--text-secondary)",
-                  background: "var(--surface-bg)", borderRadius: "8px 8px 0 0",
+                  gap: "0.5rem", padding: "0.4rem 0.75rem",
+                  fontSize: "0.65rem", fontWeight: 700, color: "var(--text-muted)",
+                  letterSpacing: "0.04em", textTransform: "uppercase" as const,
+                  background: "#f1f5f9",
                   borderBottom: "1px solid var(--border-color)",
                   border: "1px solid var(--border-color)",
                 }}>
@@ -503,8 +514,11 @@ export default function CustomConfigModal({ isOpen, onClose, onSave, existing, a
 
               {/* ── Loan Amount Brackets ──────────────────────────── */}
               <div className="form-field span-full">
-                <label className="form-label" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span>Loan Amount Brackets *</span>
+                <label className="form-label" style={{ display: "flex", alignItems: "center", gap: "0.45rem", justifyContent: "space-between" }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
+                    <span style={{ width: 20, height: 20, background: "#d97706", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "0.62rem", fontWeight: 800, flexShrink: 0 }}>4</span>
+                    Loan Brackets
+                  </span>
                   <button type="button" onClick={addBracket}
                     style={{ fontSize: "0.75rem", fontWeight: 600, padding: "0.2rem 0.7rem", borderRadius: 6, border: "1px dashed var(--brand-blue)", background: "none", color: "var(--brand-blue)", cursor: "pointer" }}>
                     + Add Bracket
@@ -513,9 +527,15 @@ export default function CustomConfigModal({ isOpen, onClose, onSave, existing, a
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginTop: "0.35rem" }}>
                   {form.brackets.map((b, bi) => (
-                    <div key={bi} style={{ border: "1px solid var(--border-color)", borderRadius: 10, padding: "0.85rem 1rem", background: "var(--surface-bg)" }}>
+                    <div key={bi} style={{ border: "1px solid var(--border-color)", padding: "0.8rem 1rem", background: "#fff", transition: "border-color 0.15s" }}
+                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#94a3b8"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = ""; }}
+                    >
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.6rem" }}>
-                        <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--text-secondary)" }}>Bracket {bi + 1}</span>
+                        <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                          <span style={{ width: 18, height: 18, background: "#f1f5f9", border: "1px solid var(--border-color)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "0.6rem", fontWeight: 800, color: "var(--text-muted)" }}>{bi + 1}</span>
+                          Bracket {bi + 1}
+                        </span>
                         {form.brackets.length > 1 && (
                           <button type="button" onClick={() => removeBracket(bi)}
                             style={{ fontSize: "0.75rem", padding: "0.15rem 0.55rem", borderRadius: 5, border: "1px solid #fca5a5", background: "#fff1f2", color: "#dc2626", cursor: "pointer", fontWeight: 600 }}>
@@ -573,8 +593,11 @@ export default function CustomConfigModal({ isOpen, onClose, onSave, existing, a
               </div>
 
               {/* ── Status ─────────────────────────────────────────── */}
-              <div className="form-field span-full">
-                <label className="form-label">Status</label>
+              <div className="form-field span-full" style={{ borderTop: "1px solid var(--border-color)", paddingTop: "0.75rem" }}>
+                <label className="form-label" style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
+                  <span style={{ width: 20, height: 20, background: "#059669", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "0.62rem", fontWeight: 800, flexShrink: 0 }}>5</span>
+                  Status
+                </label>
                 <select className="form-input" value={form.status}
                   onChange={(e) => setForm((p) => ({ ...p, status: e.target.value as "Active" | "Inactive" }))}>
                   <option value="Active">Active</option>
@@ -586,7 +609,10 @@ export default function CustomConfigModal({ isOpen, onClose, onSave, existing, a
           </div>
           <div className="modal-footer">
             <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn-primary">{existing ? "Save Changes" : "Add Config"}</button>
+            <button type="submit" className="btn-primary">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              {existing ? "Save Changes" : "Create Config"}
+            </button>
           </div>
         </form>
       </div>

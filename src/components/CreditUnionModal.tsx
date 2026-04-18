@@ -101,7 +101,7 @@ export default function CreditUnionModal({ isOpen, onClose, onSave, existing }: 
 
   return (
     <div className="modal-overlay">
-      <div className="modal-box">
+      <div className="modal-box" style={{ maxWidth: 560 }}>
         <div className="modal-header">
           <span className="modal-title">{existing ? "Edit Credit Union" : "Add Credit Union"}</span>
           <button className="modal-close" onClick={onClose} aria-label="Close">&times;</button>

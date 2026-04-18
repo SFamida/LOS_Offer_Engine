@@ -58,7 +58,7 @@ export default function OfferModal({ isOpen, onClose, onSave, existing }: Props)
 
   return (
     <div className="modal-overlay">
-      <div className="modal-box" style={{ maxWidth: 480 }}>
+      <div className="modal-box" style={{ maxWidth: 480, width: "95vw" }}>
         <div className="modal-header">
           <span className="modal-title">{existing ? "Edit Offer" : "Add Offer"}</span>
           <button className="modal-close" onClick={onClose} aria-label="Close">&times;</button>

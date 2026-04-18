@@ -25,14 +25,14 @@ const Icons = {
 };
 
 const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
-  { key: "creditUnions", label: "Credit Unions", icon: <Icons.CreditUnion /> },
-  { key: "merchants",    label: "Merchants",     icon: <Icons.Merchant /> },
-  { key: "customConfig", label: "Custom Config", icon: <Icons.Config /> },
   { key: "offers",       label: "Offers",        icon: <Icons.Offers /> },
+  { key: "customConfig", label: "Custom Config", icon: <Icons.Config /> },
+  { key: "merchants",    label: "Merchants",     icon: <Icons.Merchant /> },
+  { key: "creditUnions", label: "Credit Unions", icon: <Icons.CreditUnion /> },
 ];
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<Tab>("creditUnions");
+  const [activeTab, setActiveTab] = useState<Tab>("offers");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [offers, setOffers] = useState<Offer[]>([]);
 
@@ -44,15 +44,15 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="flex h-screen bg-slate-50/50 overflow-hidden text-slate-900 border-radius-5">
+    <div className="flex h-screen bg-slate-50/50 overflow-hidden text-slate-900">
 
       {/* Sidebar */}
       <aside
         className={`${
-          isSidebarOpen ? "w-60" : "w-16"
+          isSidebarOpen ? "w-56" : "w-14"
         } bg-white border-r border-slate-200 transition-all duration-300 ease-in-out flex flex-col shrink-0 relative z-40`}
       >
-        <div className="h-16 flex items-center px-5 border-b border-slate-100 shrink-0">
+        <div className="h-14 flex items-center px-4 border-b border-slate-100 shrink-0">
           <div className="flex items-center gap-3">
             <div className={`flex h-8 w-8 min-w-[32px] items-center justify-center bg-[#2c3b41] font-bold text-white`}>
               L
@@ -95,7 +95,7 @@ export default function Home() {
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 relative z-30">
+        <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 shrink-0 relative z-30">
           <div className="flex items-center gap-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
             <span>DASHBOARD</span>
             <span className="text-slate-200">/</span>
@@ -110,11 +110,11 @@ export default function Home() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-6">
-          <div className="w-full space-y-6 animate-fade-in">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+          <div className="w-full max-w-[1400px] mx-auto space-y-5 animate-fade-in">
             <div className="flex items-end justify-between">
               <div>
-                <h2 className="text-xl font-bold tracking-tight text-slate-900 capitalize">
+                <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 capitalize">
                   {TABS.find(t => t.key === activeTab)?.label}
                 </h2>
                 <p className="mt-0.5 text-xs text-slate-500">Manage configuration details.</p>

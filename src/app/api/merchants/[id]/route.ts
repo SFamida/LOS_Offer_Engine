@@ -5,29 +5,33 @@ export async function PUT(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const body = await request.json();
-  const record = await prisma.merchant.update({
-    where: { id: params.id },
-    data: {
-      name: body.name,
-      minLoanAmount: body.minLoanAmount,
-      maxLoanAmount: body.maxLoanAmount,
-      vantageMin: body.vantageMin,
-      vantageMax: body.vantageMax,
-      minTerm: body.minTerm,
-      maxTerm: body.maxTerm,
-      offers: JSON.stringify(body.offers ?? []),
-      excelFileName: body.excelFileName ?? null,
-      status: body.status,
-    },
-  });
-  return NextResponse.json({ ...record, offers: JSON.parse(record.offers) });
+  try {
+    const body = await request.json();
+    const record = await prisma.merchant.update({
+      where: { id: params.id },
+      data: {
+        name: body.name,
+        customConfigId: body.customConfigId,
+        creditUnionIds: JSON.stringify(body.creditUnionIds ?? []),
+        status: body.status,
+      },
+    });
+    return NextResponse.json({ ...record, creditUnionIds: JSON.parse(record.creditUnionIds) });
+  } catch (err) {
+    console.error("PUT /api/merchants error:", err);
+    return NextResponse.json({ error: "Failed to update merchant" }, { status: 500 });
+  }
 }
 
 export async function DELETE(
   _request: Request,
   { params }: { params: { id: string } }
 ) {
-  await prisma.merchant.delete({ where: { id: params.id } });
-  return new NextResponse(null, { status: 204 });
+  try {
+    await prisma.merchant.delete({ where: { id: params.id } });
+    return new NextResponse(null, { status: 204 });
+  } catch (err) {
+    console.error("DELETE /api/merchants error:", err);
+    return NextResponse.json({ error: "Failed to delete merchant" }, { status: 500 });
+  }
 }

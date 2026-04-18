@@ -26,18 +26,12 @@ model CreditUnion {
 }
 
 model Merchant {
-  id            String   @id @default(cuid())
-  name          String   @db.NVarChar(255)
-  minLoanAmount Float
-  maxLoanAmount Float
-  vantageMin    Int
-  vantageMax    Int
-  minTerm       Int
-  maxTerm       Int
-  offers        String   @db.NVarChar(Max)
-  excelFileName String?  @db.NVarChar(255)
-  status        String   @default("Active") @db.NVarChar(20)
-  createdAt     DateTime @default(now())
+  id             String   @id @default(cuid())
+  name           String   @db.NVarChar(255)
+  customConfigId String   @db.NVarChar(255)
+  creditUnionIds String   @db.NVarChar(Max)
+  status         String   @default("Active") @db.NVarChar(20)
+  createdAt      DateTime @default(now())
 
   @@map("merchants")
   @@schema("los_offers")

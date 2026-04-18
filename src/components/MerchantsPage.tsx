@@ -3,85 +3,32 @@
 import { useState, useMemo, useEffect } from "react";
 import { Merchant } from "@/types/merchant";
 import MerchantModal from "@/components/MerchantModal";
-
-const fmt = (n: number) =>
-  n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+import { CustomConfig } from "@/types/customConfig";
+import { CreditUnion } from "@/types/creditUnion";
 
 const fmtDate = (d: string) => new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 
-const OFFER_COLORS: Record<string, { bg: string; color: string }> = {
-  "Same As Cash": { bg: "#e8f5e9", color: "#2e7d32" },
-  "Zero Interest": { bg: "#e3f2fd", color: "#1565c0" },
-};
-
-interface RatePlan {
-  band: string;
-  amount: string;
-  term: string;
-  apr: string;
-  fee: string;
-}
-
-const RATE_PLANS: RatePlan[] = [
-  { band: "760 - 850", amount: "$2,500 - $10,000",  term: "36 months",  apr: "10.99%", fee: "0%" },
-  { band: "760 - 850", amount: "$2,500 - $10,000",  term: "48 months",  apr: "10.99%", fee: "0%" },
-  { band: "760 - 850", amount: "$2,500 - $85,000",  term: "60 months",  apr: "10.99%", fee: "0%" },
-  { band: "760 - 850", amount: "$2,500 - $5,000",   term: "72 months",  apr: "10.99%", fee: "0%" },
-  { band: "760 - 850", amount: "$10,000 - $85,000", term: "96 months",  apr: "10.99%", fee: "0%" },
-  { band: "760 - 850", amount: "$5,000 - $85,000",  term: "120 months", apr: "10.99%", fee: "0%" },
-  { band: "760 - 850", amount: "$10,000 - $85,000", term: "180 months", apr: "10.99%", fee: "0%" },
-  { band: "730 - 759", amount: "$2,500 - $10,000",  term: "36 months",  apr: "11.99%", fee: "0%" },
-  { band: "730 - 759", amount: "$2,500 - $10,000",  term: "48 months",  apr: "11.99%", fee: "0%" },
-  { band: "730 - 759", amount: "$2,500 - $85,000",  term: "60 months",  apr: "11.99%", fee: "0%" },
-  { band: "730 - 759", amount: "$2,500 - $5,000",   term: "72 months",  apr: "11.99%", fee: "0%" },
-  { band: "730 - 759", amount: "$10,000 - $85,000", term: "96 months",  apr: "11.99%", fee: "0%" },
-  { band: "730 - 759", amount: "$5,000 - $85,000",  term: "120 months", apr: "11.99%", fee: "0%" },
-  { band: "730 - 759", amount: "$10,000 - $85,000", term: "180 months", apr: "11.99%", fee: "0%" },
-  { band: "700 - 729", amount: "$2,500 - $10,000",  term: "36 months",  apr: "13.99%", fee: "0%" },
-  { band: "700 - 729", amount: "$2,500 - $10,000",  term: "48 months",  apr: "13.99%", fee: "0%" },
-  { band: "700 - 729", amount: "$2,500 - $85,000",  term: "60 months",  apr: "13.99%", fee: "0%" },
-  { band: "700 - 729", amount: "$2,500 - $5,000",   term: "72 months",  apr: "13.99%", fee: "0%" },
-  { band: "700 - 729", amount: "$10,000 - $85,000", term: "96 months",  apr: "13.99%", fee: "0%" },
-  { band: "700 - 729", amount: "$5,000 - $85,000",  term: "120 months", apr: "13.99%", fee: "0%" },
-  { band: "700 - 729", amount: "$10,000 - $85,000", term: "180 months", apr: "13.99%", fee: "0%" },
-  { band: "680 - 699", amount: "$2,500 - $10,000",  term: "36 months",  apr: "15.99%", fee: "0%" },
-  { band: "680 - 699", amount: "$2,500 - $10,000",  term: "48 months",  apr: "15.99%", fee: "0%" },
-  { band: "680 - 699", amount: "$2,500 - $80,000",  term: "60 months",  apr: "15.99%", fee: "0%" },
-  { band: "680 - 699", amount: "$2,500 - $5,000",   term: "72 months",  apr: "15.99%", fee: "0%" },
-  { band: "680 - 699", amount: "$10,000 - $80,000", term: "96 months",  apr: "15.99%", fee: "0%" },
-  { band: "680 - 699", amount: "$5,000 - $80,000",  term: "120 months", apr: "15.99%", fee: "0%" },
-  { band: "680 - 699", amount: "$10,000 - $80,000", term: "180 months", apr: "15.99%", fee: "0%" },
-  { band: "640 - 679", amount: "$2,500 - $10,000",  term: "36 months",  apr: "17.99%", fee: "4%" },
-  { band: "640 - 679", amount: "$2,500 - $10,000",  term: "48 months",  apr: "17.99%", fee: "4%" },
-  { band: "640 - 679", amount: "$2,500 - $50,000",  term: "60 months",  apr: "17.99%", fee: "4%" },
-  { band: "640 - 679", amount: "$2,500 - $5,000",   term: "72 months",  apr: "17.99%", fee: "4%" },
-  { band: "640 - 679", amount: "$10,000 - $50,000", term: "96 months",  apr: "17.99%", fee: "4%" },
-  { band: "640 - 679", amount: "$5,000 - $50,000",  term: "120 months", apr: "17.99%", fee: "4%" },
-];
-
-const BAND_COLORS: Record<string, string> = {
-  "760 - 850": "#f0fdf4",
-  "730 - 759": "#eff6ff",
-  "700 - 729": "#fefce8",
-  "680 - 699": "#fff7ed",
-  "640 - 679": "#fdf4ff",
-};
-
 export default function MerchantsPage({ embedded = false }: { embedded?: boolean }) {
   const [merchants, setMerchants] = useState<Merchant[]>([]);
+  const [customConfigs, setCustomConfigs] = useState<CustomConfig[]>([]);
+  const [creditUnions, setCreditUnions] = useState<CreditUnion[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | "Active" | "Inactive">("All");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editing, setEditing] = useState<Merchant | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [ratePlansFor, setRatePlansFor] = useState<Merchant | null>(null);
 
   useEffect(() => {
-    fetch("/api/merchants")
-      .then((r) => r.json())
-      .then((data) => setMerchants(data))
-      .finally(() => setLoading(false));
+    Promise.all([
+      fetch("/api/merchants").then((r) => r.json()),
+      fetch("/api/custom-configs").then((r) => r.json()),
+      fetch("/api/credit-unions").then((r) => r.json()),
+    ]).then(([m, cc, cu]) => {
+      setMerchants(m);
+      setCustomConfigs(cc);
+      setCreditUnions(cu);
+    }).finally(() => setLoading(false));
   }, []);
 
   const filtered = useMemo(() => {
@@ -184,80 +131,59 @@ export default function MerchantsPage({ embedded = false }: { embedded?: boolean
                 <thead>
                   <tr>
                     <th>Merchant Name</th>
-                    <th>Loan Amount Range</th>
-                    <th>Vantage Score Range</th>
-                    <th>Term Range</th>
-                    <th>Offers</th>
-                    <th>Excel File</th>
+                    <th>Custom Config</th>
+                    <th>Credit Unions</th>
                     <th>Status</th>
                     <th>Created</th>
                     <th style={{ textAlign: "right" }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((m) => (
-                    <tr key={m.id} className="group">
-                      <td className="td-name">{m.name}</td>
-                      <td>
-                        <div>{fmt(m.minLoanAmount)}</div>
-                        <div className="td-sub">up to {fmt(m.maxLoanAmount)}</div>
-                      </td>
-                      <td>
-                        <div>{m.vantageMin} - {m.vantageMax}</div>
-                      </td>
-                      <td>
-                        <div>{m.minTerm} - {m.maxTerm} months</div>
-                      </td>
-                      <td>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.3rem" }}>
-                          {m.offers.length === 0 ? (
-                            <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>—</span>
-                          ) : m.offers.map((offer) => (
-                            <span key={offer} style={{
-                              fontSize: "0.7rem",
-                              fontWeight: 600,
-                              padding: "2px 8px",
-                              borderRadius: 999,
-                              background: OFFER_COLORS[offer]?.bg ?? "#f3f4f6",
-                              color: OFFER_COLORS[offer]?.color ?? "#374151",
-                              whiteSpace: "nowrap",
-                            }}>
-                              {offer}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-                      <td>
-                        {m.excelFileName ? (
-                          <span style={{ fontSize: "0.78rem", color: "var(--brand-blue)" }} title={m.excelFileName}>
-                            {m.excelFileName.length > 18 ? m.excelFileName.slice(0, 15) + "..." : m.excelFileName}
+                  {filtered.map((m) => {
+                    const ccName = customConfigs.find((cc) => cc.id === m.customConfigId)?.name || m.customConfigId;
+                    const cuNames = m.creditUnionIds
+                      .map((cuId) => creditUnions.find((cu) => cu.id === cuId)?.name)
+                      .filter(Boolean) as string[];
+                    return (
+                      <tr key={m.id} className="group">
+                        <td className="td-name">{m.name}</td>
+                        <td>
+                          <span style={{ fontSize: "0.8rem", fontWeight: 500, color: "var(--brand-blue)" }}>
+                            {ccName}
                           </span>
-                        ) : (
-                          <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>—</span>
-                        )}
-                      </td>
-                      <td>
-                        <span className={`badge ${m.status === "Active" ? "badge-active" : "badge-inactive"}`}>
-                          <span className="badge-dot" />
-                          {m.status}
-                        </span>
-                      </td>
-                      <td>{fmtDate(m.createdAt)}</td>
-                      <td style={{ textAlign: "right" }}>
-                        <div className="reveal-actions flex justify-end gap-2">
-                          <button
-                            className="btn-row-edit"
-                            style={{ background: "var(--surface-bg)", color: "var(--brand-blue)", border: "1px solid var(--brand-blue)" }}
-                            onClick={() => setRatePlansFor(m)}
-                          >
-                            Rate Plans
-                          </button>
-                          <button className="btn-row-edit" onClick={() => handleEdit(m)}>Edit</button>
-                          <button className="btn-row-delete" onClick={() => setDeleteConfirm(m.id)}>Delete</button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem" }}>
+                            {cuNames.length === 0 ? (
+                              <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>—</span>
+                            ) : cuNames.map((name) => (
+                              <span key={name} style={{
+                                fontSize: "0.7rem", fontWeight: 500,
+                                padding: "2px 8px",
+                                background: "#f1f5f9", color: "#475569",
+                                whiteSpace: "nowrap",
+                              }}>
+                                {name}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td>
+                          <span className={`badge ${m.status === "Active" ? "badge-active" : "badge-inactive"}`}>
+                            <span className="badge-dot" />
+                            {m.status}
+                          </span>
+                        </td>
+                        <td>{fmtDate(m.createdAt)}</td>
+                        <td style={{ textAlign: "right" }}>
+                          <div className="reveal-actions flex justify-end gap-2">
+                            <button className="btn-row-edit" onClick={() => handleEdit(m)}>Edit</button>
+                            <button className="btn-row-delete" onClick={() => setDeleteConfirm(m.id)}>Delete</button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -284,78 +210,9 @@ export default function MerchantsPage({ embedded = false }: { embedded?: boolean
         onClose={() => { setIsModalOpen(false); setEditing(null); }}
         onSave={handleSave}
         existing={editing}
+        customConfigs={customConfigs}
+        creditUnions={creditUnions}
       />
-
-      {/* Rate Plans Modal */}
-      {ratePlansFor && (
-        <div className="modal-overlay" onClick={() => setRatePlansFor(null)}>
-          <div
-            className="modal-box"
-            style={{ maxWidth: 780, width: "95vw" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="modal-header">
-              <div>
-                <span className="modal-title">Standard Rate Plans</span>
-                <div style={{ fontSize: "0.78rem", color: "var(--text-secondary)", marginTop: 2 }}>
-                  {ratePlansFor.name}
-                </div>
-              </div>
-              <button className="modal-close" onClick={() => setRatePlansFor(null)} aria-label="Close">&times;</button>
-            </div>
-            <div className="modal-body" style={{ padding: 0 }}>
-              <div style={{ overflowX: "auto", maxHeight: "60vh", overflowY: "auto" }}>
-                <table className="data-table" style={{ fontSize: "0.8rem" }}>
-                  <thead style={{ position: "sticky", top: 0, zIndex: 1, background: "var(--surface-card)" }}>
-                    <tr>
-                      <th>Vantage Band</th>
-                      <th>Amount</th>
-                      <th>Term</th>
-                      <th>APR</th>
-                      <th>Program Fee</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {RATE_PLANS.map((rp, i) => {
-                      const prevBand = i > 0 ? RATE_PLANS[i - 1].band : null;
-                      const isNewBand = rp.band !== prevBand;
-                      return (
-                        <tr
-                          key={i}
-                          style={{ background: BAND_COLORS[rp.band] ?? "transparent" }}
-                        >
-                          <td style={{ fontWeight: isNewBand ? 700 : 400, color: isNewBand ? "var(--text-primary)" : "var(--text-secondary)" }}>
-                            {isNewBand ? rp.band : ""}
-                          </td>
-                          <td className="td-mono">{rp.amount}</td>
-                          <td>{rp.term}</td>
-                          <td style={{ fontWeight: 600, color: "var(--brand-blue)" }}>{rp.apr}</td>
-                          <td>
-                            <span style={{
-                              display: "inline-block",
-                              padding: "1px 8px",
-                              borderRadius: 999,
-                              fontSize: "0.72rem",
-                              fontWeight: 600,
-                              background: rp.fee === "0%" ? "#f0fdf4" : "#fff7ed",
-                              color: rp.fee === "0%" ? "#15803d" : "#c2410c",
-                            }}>
-                              {rp.fee}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn-secondary" onClick={() => setRatePlansFor(null)}>Close</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {deleteConfirm && (
         <div className="modal-overlay">

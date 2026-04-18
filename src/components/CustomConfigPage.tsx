@@ -97,30 +97,53 @@ export default function CustomConfigPage({ availableOffers, embedded = false }: 
   };
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--surface-bg)" }}>
-      <main className="page-content">
-        <div className="section-header">
-          {!embedded ? (
-            <div>
-              <h2 className="section-title">Custom Configuration</h2>
-              <p className="section-sub">
-                {configs.length} total &bull;{" "}
-                {configs.filter((c) => c.status === "Active").length} active
-              </p>
+    <div style={{ background: "var(--surface-bg)", minHeight: "100%" }}>
+      <main className="page-content" style={{ paddingTop: "1.5rem", paddingBottom: "2rem" }}>
+
+        {/* ─── Summary strip ──────────────────────────────────── */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: "1.25rem", flexWrap: "wrap",
+          marginBottom: "1.5rem",
+        }}>
+          {[
+            { label: "Total", value: configs.length, bg: "#f1f5f9", color: "#334155", border: "#cbd5e1" },
+            { label: "Active", value: configs.filter((c) => c.status === "Active").length, bg: "#ecfdf5", color: "#059669", border: "#a7f3d0" },
+            { label: "Inactive", value: configs.filter((c) => c.status === "Inactive").length, bg: "#f8fafc", color: "#94a3b8", border: "#e2e8f0" },
+          ].map((s) => (
+            <div key={s.label} style={{
+              display: "inline-flex", alignItems: "center", gap: "0.45rem",
+              padding: "0.4rem 0.85rem",
+              background: s.bg, border: `1px solid ${s.border}`,
+              fontSize: "0.76rem", fontWeight: 600, color: s.color,
+            }}>
+              <span style={{ fontSize: "1.1rem", fontWeight: 800, lineHeight: 1 }}>{s.value}</span>
+              {s.label}
             </div>
-          ) : (
-            <div />
-          )}
-          <button className="btn-primary" onClick={handleAdd}>
-            <span style={{ fontSize: "1.1rem", lineHeight: "1" }}>+</span>
-            Add Config
-          </button>
+          ))}
+
+          <div style={{ marginLeft: "auto" }}>
+            <button className="btn-primary" onClick={handleAdd}>
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="8" y1="3" x2="8" y2="13"/><line x1="3" y1="8" x2="13" y2="8"/></svg>
+              New Config
+            </button>
+          </div>
         </div>
 
-        <div className="filter-bar">
-          <input type="text" className="filter-search" value={search}
-            onChange={(e) => setSearch(e.target.value)} placeholder="Search by APR..." />
-          <div style={{ display: "flex", gap: "0.5rem" }}>
+        {/* ─── Search + filter ────────────────────────────────── */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1.25rem", flexWrap: "wrap",
+        }}>
+          <div style={{ flex: 1, minWidth: 200, position: "relative" }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input type="text" className="filter-search" value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by APR…"
+              style={{ paddingLeft: 36 }}
+            />
+          </div>
+          <div style={{ display: "flex", gap: "0.35rem" }}>
             {(["All", "Active", "Inactive"] as const).map((s) => (
               <button key={s} className={`filter-pill${statusFilter === s ? " active" : ""}`}
                 onClick={() => setStatusFilter(s)}>{s}</button>
@@ -128,109 +151,148 @@ export default function CustomConfigPage({ availableOffers, embedded = false }: 
           </div>
         </div>
 
+        {/* ─── Config cards ───────────────────────────────────── */}
         {loading ? (
-          <div className="empty-state"><p>Loading…</p></div>
-        ) : (
-          <div className="card">
-            {filtered.length === 0 ? (
-              <div className="empty-state">
-                <p style={{ fontWeight: 600 }}>No configurations found</p>
-                <p style={{ fontSize: "0.78rem", marginTop: 4 }}>Try adjusting your search or filters</p>
-              </div>
-            ) : (
-              <div style={{ overflowX: "auto" }}>
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Vantage Tier APRs</th>
-                      <th>Loan Amount Brackets</th>
-                      <th>Status</th>
-                      <th>Created</th>
-                      <th style={{ textAlign: "right" }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.map((c, index) => (
-                      <tr key={c.id} className="group">
-                        <td>{index + 1}</td>
-                        <td>
-                          <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
-                            {VANTAGE_TIERS.map((tier) => {
-                              const entry = c.vantageConfig[tier.key];
-                              if (!entry) return null;
-                              return (
-                                <div key={tier.key} style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.77rem" }}>
-                                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: TIER_COLORS[tier.key], display: "inline-block", flexShrink: 0 }} />
-                                  <span style={{ color: "var(--text-secondary)" }}>{tier.label}</span>
-                                  <span style={{ color: "var(--text-secondary)" }}>({entry.minScore}–{entry.maxScore})</span>
-                                  <span style={{ fontWeight: 700, color: TIER_COLORS[tier.key] }}>{entry.apr}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </td>
-                        <td>
-                          <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
-                            {c.brackets.map((b, bi) => (
-                              <div key={bi} style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
-                                <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>
-                                  {fmt(b.minAmount)} &ndash; {fmt(b.maxAmount)}
-                                </span>
-                                {" "}&rarr; {b.terms.join(", ")} mo
-                              </div>
-                            ))}
-                          </div>
-                        </td>
-                        <td>
-                          <span className={`badge ${c.status === "Active" ? "badge-active" : "badge-inactive"}`}>
-                            <span className="badge-dot" />
-                            {c.status}
-                          </span>
-                        </td>
-                        <td>{c.createdAt}</td>
-                        <td style={{ textAlign: "right" }}>
-                          <div className="reveal-actions flex justify-end gap-2">
-                            <button
-                              className="btn-row-edit"
-                              style={{ background: "var(--surface-bg)", color: "var(--brand-blue)", border: "1px solid var(--brand-blue)" }}
-                              onClick={() => {
-                                setSelectedViewOfferIds(
-                                  c.selectedOfferIds.filter((id) => {
-                                    const o = availableOffers.find((off) => off.id === id);
-                                    return o && !o.isPromo;
-                                  })
-                                );
-                                setViewPlansFor(c);
-                              }}
-                            >
-                              View Plans
-                            </button>
-                            <button className="btn-row-edit" onClick={() => handleEdit(c)}>Edit</button>
-                            <button className="btn-row-delete" onClick={() => setDeleteConfirm(c.id)}>Delete</button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+          <div style={{ textAlign: "center", padding: "3rem 0", color: "var(--text-muted)", fontSize: "0.85rem" }}>Loading…</div>
+        ) : filtered.length === 0 ? (
+          <div style={{
+            textAlign: "center", padding: "3.5rem 2rem",
+            background: "#fff", border: "1px dashed var(--border-color)",
+          }}>
+            <p style={{ fontWeight: 600, color: "var(--text-secondary)", fontSize: "0.88rem" }}>No configurations found</p>
+            <p style={{ fontSize: "0.76rem", marginTop: 6, color: "var(--text-muted)" }}>Try adjusting your search or filters</p>
           </div>
-        )} {/* end loading ternary */}
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+            {filtered.map((c, index) => {
+              const activeTierCount = VANTAGE_TIERS.filter((t) => c.vantageConfig[t.key]).length;
+              return (
+                <div key={c.id} style={{
+                  background: "#fff", border: "1px solid var(--border-color)",
+                  display: "flex", overflow: "hidden",
+                  transition: "border-color 0.2s, transform 0.15s",
+                }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#94a3b8"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = ""; }}
+                >
+                  {/* Left accent */}
+                  <div style={{
+                    width: 4, flexShrink: 0,
+                    background: c.status === "Active"
+                      ? "linear-gradient(180deg, #10b981, #059669)"
+                      : "linear-gradient(180deg, #cbd5e1, #94a3b8)",
+                  }} />
 
-        <div className="stat-grid">
-          {[
-            { label: "Total Configs", value: configs.length },
-            { label: "Active",   value: configs.filter((c) => c.status === "Active").length },
-            { label: "Inactive", value: configs.filter((c) => c.status === "Inactive").length },
-          ].map((s) => (
-            <div key={s.label} className="stat-card">
-              <p className="stat-label">{s.label}</p>
-              <p className="stat-value">{s.value}</p>
-            </div>
-          ))}
-        </div>
+                  <div style={{ flex: 1, padding: "0.9rem 1.15rem" }}>
+                    {/* Row 1: Name + meta */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.55rem", flexWrap: "wrap" }}>
+                      <span style={{
+                        width: 26, height: 26,
+                        background: "#f1f5f9", color: "var(--text-secondary)",
+                        display: "inline-flex", alignItems: "center", justifyContent: "center",
+                        fontSize: "0.68rem", fontWeight: 700, flexShrink: 0,
+                        border: "1px solid var(--border-color)",
+                      }}>
+                        {index + 1}
+                      </span>
+                      <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
+                        {c.name || `Config ${index + 1}`}
+                      </span>
+                      <span className={`badge ${c.status === "Active" ? "badge-active" : "badge-inactive"}`} style={{ fontSize: "0.6rem", padding: "0.15rem 0.45rem" }}>
+                        <span className="badge-dot" />
+                        {c.status}
+                      </span>
+                      <span style={{ fontSize: "0.68rem", color: "var(--text-muted)", marginLeft: "0.25rem" }}>
+                        {activeTierCount} tier{activeTierCount !== 1 ? "s" : ""} &middot; {c.brackets.length} bracket{c.brackets.length !== 1 ? "s" : ""}
+                      </span>
+
+                      {/* Actions pinned right */}
+                      <div style={{ marginLeft: "auto", display: "flex", gap: "0.3rem" }}>
+                        <button
+                          onClick={() => {
+                            setSelectedViewOfferIds(
+                              c.selectedOfferIds.filter((id) => {
+                                const o = availableOffers.find((off) => off.id === id);
+                                return o && !o.isPromo;
+                              })
+                            );
+                            setViewPlansFor(c);
+                          }}
+                          style={{
+                            padding: "0.3rem 0.6rem", fontSize: "0.68rem", fontWeight: 600,
+                            background: "#eff6ff", color: "#2563eb", border: "1px solid #bfdbfe",
+                            cursor: "pointer", transition: "all 0.15s",
+                          }}
+                        >
+                          Plans
+                        </button>
+                        <button
+                          onClick={() => handleEdit(c)}
+                          style={{
+                            padding: "0.3rem 0.6rem", fontSize: "0.68rem", fontWeight: 600,
+                            background: "#f8fafc", color: "var(--text-secondary)", border: "1px solid var(--border-color)",
+                            cursor: "pointer", transition: "all 0.15s",
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirm(c.id)}
+                          style={{
+                            padding: "0.3rem 0.6rem", fontSize: "0.68rem", fontWeight: 600,
+                            background: "#fff", color: "#dc2626", border: "1px solid #fecaca",
+                            cursor: "pointer", transition: "all 0.15s",
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Row 2: Tiers inline */}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "0.3rem", marginBottom: "0.4rem" }}>
+                      {VANTAGE_TIERS.map((tier) => {
+                        const entry = c.vantageConfig[tier.key];
+                        if (!entry) return null;
+                        const accent = TIER_COLORS[tier.key];
+                        return (
+                          <span key={tier.key} style={{
+                            display: "inline-flex", alignItems: "center", gap: "0.3rem",
+                            padding: "0.18rem 0.55rem",
+                            fontSize: "0.7rem", lineHeight: 1.4,
+                            background: `${accent}08`, border: `1px solid ${accent}18`,
+                          }}>
+                            <span style={{ width: 6, height: 6, borderRadius: "50%", background: accent, flexShrink: 0 }} />
+                            <span style={{ color: "var(--text-secondary)", fontWeight: 500 }}>{tier.label}</span>
+                            <span style={{ fontWeight: 700, color: accent }}>{entry.apr}</span>
+                            <span style={{ fontSize: "0.58rem", color: "var(--text-muted)" }}>{entry.minScore}–{entry.maxScore}</span>
+                          </span>
+                        );
+                      })}
+                    </div>
+
+                    {/* Row 3: Brackets */}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem" }}>
+                      {c.brackets.map((b, bi) => (
+                        <span key={bi} style={{
+                          display: "inline-flex", alignItems: "center", gap: "0.25rem",
+                          padding: "0.12rem 0.45rem",
+                          fontSize: "0.68rem",
+                          background: "#f8fafc", border: "1px solid var(--border-color)",
+                          color: "var(--text-secondary)",
+                        }}>
+                          <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{fmt(b.minAmount)}–{fmt(b.maxAmount)}</span>
+                          <span style={{ color: "var(--text-muted)", fontSize: "0.6rem" }}>→</span>
+                          <span>{b.terms.join(", ")} mo</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </main>
 
       <CustomConfigModal
@@ -256,20 +318,29 @@ export default function CustomConfigPage({ availableOffers, embedded = false }: 
         const showBdCol = checkedBuydownNums.length > 0;
         return (
           <div className="modal-overlay" onClick={() => setViewPlansFor(null)}>
-            <div className="modal-box" style={{ maxWidth: 820, width: "96vw" }} onClick={(e) => e.stopPropagation()}>
-              <div className="modal-header">
+            <div className="modal-box" style={{ maxWidth: 920, width: "96vw" }} onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header" style={{ background: "#f8fafc" }}>
                 <div>
-                  <span className="modal-title">Plan List</span>
-                  <div style={{ fontSize: "0.78rem", color: "var(--text-secondary)", marginTop: 2 }}>
-                    {activeTiers.length} vantage tier{activeTiers.length !== 1 ? "s" : ""}
-                    &nbsp;&bull;&nbsp;{viewPlansFor.brackets.length} loan bracket{viewPlansFor.brackets.length !== 1 ? "s" : ""}
-                    &nbsp;&bull;&nbsp;{totalRows} plan{totalRows !== 1 ? "s" : ""}
+                  <span className="modal-title" style={{ fontSize: "0.95rem" }}>Rate Plans</span>
+                  <div style={{ display: "flex", gap: "0.4rem", marginTop: 5, flexWrap: "wrap" }}>
+                    {[
+                      { v: activeTiers.length, l: "Tier", c: "#2563eb", bg: "#eff6ff", b: "#bfdbfe" },
+                      { v: viewPlansFor.brackets.length, l: "Bracket", c: "#059669", bg: "#ecfdf5", b: "#a7f3d0" },
+                      { v: totalRows, l: "Plan", c: "#7c3aed", bg: "#f5f3ff", b: "#ddd6fe" },
+                    ].map((chip) => (
+                      <span key={chip.l} style={{
+                        fontSize: "0.65rem", fontWeight: 700, padding: "0.1rem 0.45rem",
+                        background: chip.bg, color: chip.c, border: `1px solid ${chip.b}`,
+                      }}>
+                        {chip.v} {chip.l}{chip.v !== 1 ? "s" : ""}
+                      </span>
+                    ))}
                   </div>
                 </div>
                 <button className="modal-close" onClick={() => setViewPlansFor(null)} aria-label="Close">&times;</button>
               </div>
-              <div className="modal-body" style={{ padding: 0 }}>
-                <div style={{ overflowX: "auto", maxHeight: "62vh", overflowY: "auto" }}>
+              <div className="modal-body" style={{ padding: 0, maxHeight: "calc(96vh - 140px)" }}>
+                <div style={{ overflowX: "auto", maxHeight: "inherit", overflowY: "auto" }}>
                   <table className="data-table" style={{ fontSize: "0.8rem" }}>
                     <thead style={{ position: "sticky", top: 0, zIndex: 1, background: "var(--surface-card)" }}>
                       <tr>
@@ -390,14 +461,14 @@ export default function CustomConfigPage({ availableOffers, embedded = false }: 
 
       {deleteConfirm && (
         <div className="modal-overlay">
-          <div className="modal-box" style={{ maxWidth: 420 }}>
-            <div className="modal-header">
-              <span className="modal-title">Delete Config?</span>
+          <div className="modal-box" style={{ maxWidth: 400 }}>
+            <div className="modal-header" style={{ background: "#fef2f2", borderBottom: "1px solid #fecaca" }}>
+              <span className="modal-title" style={{ color: "#dc2626", fontSize: "0.9rem" }}>Delete Configuration</span>
               <button className="modal-close" onClick={() => setDeleteConfirm(null)}>&times;</button>
             </div>
-            <div className="modal-body">
-              <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-                This action cannot be undone. The configuration will be permanently removed.
+            <div className="modal-body" style={{ padding: "1.25rem 1.5rem" }}>
+              <p style={{ fontSize: "0.82rem", color: "var(--text-secondary)", lineHeight: 1.7, margin: 0 }}>
+                This action is <strong>permanent</strong> and cannot be undone. The configuration and all associated data will be removed.
               </p>
             </div>
             <div className="modal-footer">
